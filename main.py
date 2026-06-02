@@ -609,10 +609,10 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                         '-map', '1:0',
                         '-c:v', 'copy', 
                         '-c:a', 'copy', 
-                        '-c:s', 'ass',
-                        '-metadata:s:s:0', 'language=ara',
-                        '-metadata:s:s:0', 'title=Anime Phoenix Subtitles',
-                        '-disposition:s:s:0', 'default'
+                        '-c:s', 'copy',
+                        '-metadata:s:0', 'language=ara',
+                        '-metadata:s:0', 'title=Anime Phoenix Subtitles',
+                        '-disposition:s:0', 'default'
                     ]
                     
                     if vid_duration:
