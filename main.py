@@ -418,12 +418,29 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             audio_streams = [s for s in data.get('streams', []) if s.get('codec_type') == 'audio']
             if not audio_streams: return None
 
+            jp_streams = []
             for stream in audio_streams:
                 lang = stream.get('tags', {}).get('language', '').lower()
-                channels = stream.get('channels', 0)
-                if lang in ['jpn', 'ja', 'japanese'] and channels == 2:
-                    return {'index': stream['index'], 'language': lang, 'channels': channels}
-            return None
+                if lang in ['jpn', 'ja', 'japanese']:
+                    jp_streams.append(stream)
+                    
+            if not jp_streams:
+                return None
+                
+            for stream in jp_streams:
+                if stream.get('channels', 0) == 2:
+                    return {
+                        'index': stream['index'], 
+                        'language': stream.get('tags', {}).get('language', ''), 
+                        'channels': 2
+                    }
+                    
+            fallback = jp_streams[0]
+            return {
+                'index': fallback['index'], 
+                'language': fallback.get('tags', {}).get('language', ''), 
+                'channels': fallback.get('channels', 0)
+            }
         except Exception as e:
             self.log(f"Audio probe failed: {e}", "ERROR")
             return None
@@ -674,7 +691,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                     # 3. سحب الصوت الياباني
                     best_audio = self.get_best_audio_stream(vid_path)
                     if not best_audio:
-                        self.log(f"Skipping Ep {vid_ep}: No Japanese stereo audio track found.", "ERROR")
+                        self.log(f"Skipping Ep {vid_ep}: No Japanese audio track found.", "ERROR")
                         count_no_audio += 1
                         if os.path.exists(temp_sub_path):
                             os.remove(temp_sub_path)
