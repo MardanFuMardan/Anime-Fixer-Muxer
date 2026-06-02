@@ -41,7 +41,10 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.is_processing = False
         
         self.setup_ui()
+        self.load_settings()
         self.check_local_tools()
+        
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def setup_ui(self):
         # --- الفريم الرئيسي مع Padding ممتاز ---
@@ -130,6 +133,35 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             logger.warning(message)
         else:
             logger.info(message)
+
+    def load_settings(self):
+        config_path = os.path.join(self.base_dir, "config.json")
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                
+                if "playres_x" in data:
+                    self.res_x_entry.delete(0, 'end')
+                    self.res_x_entry.insert(0, str(data["playres_x"]))
+                if "playres_y" in data:
+                    self.res_y_entry.delete(0, 'end')
+                    self.res_y_entry.insert(0, str(data["playres_y"]))
+        except Exception:
+            pass
+
+    def on_closing(self):
+        config_path = os.path.join(self.base_dir, "config.json")
+        try:
+            data = {
+                "playres_x": self.res_x_entry.get().strip() or "1920",
+                "playres_y": self.res_y_entry.get().strip() or "1080"
+            }
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+        except Exception:
+            pass
+        self.destroy()
 
     def check_local_tools(self):
         if os.path.exists(self.ffmpeg_path) and os.path.exists(self.ffprobe_path):
