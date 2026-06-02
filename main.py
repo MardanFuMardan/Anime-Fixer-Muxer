@@ -5,6 +5,7 @@ import json
 import logging
 import threading
 import tempfile
+import shutil
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 
@@ -392,6 +393,22 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             os.makedirs(output_dir, exist_ok=True)
 
             video_files = [f for f in os.listdir(folder) if f.endswith(('.mkv', '.mp4'))]
+            
+            total_size = sum(os.path.getsize(os.path.join(folder, f)) for f in video_files)
+            required_space = total_size * 1.1
+            free_space = shutil.disk_usage(output_dir).free
+            
+            if free_space < required_space:
+                req_gb = required_space / (1024**3)
+                free_gb = free_space / (1024**3)
+                self.log(f"Skipping batch {os.path.basename(folder)}: Insufficient disk space. Required: {req_gb:.2f} GB, Available: {free_gb:.2f} GB", "ERROR")
+                
+                def _remove_skipped(f=folder):
+                    if f in self.folder_queue:
+                        self.folder_queue.remove(f)
+                        self.update_queue_ui()
+                self.after(0, _remove_skipped)
+                continue
             
             def sort_key(f):
                 ep = self.extract_episode_number(f)
