@@ -58,18 +58,29 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         # --- Header ---
         header_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 20))
+
+        title_stack = ctk.CTkFrame(header_frame, fg_color="transparent")
+        title_stack.pack(side="left")
         
         title_label = ctk.CTkLabel(
-            header_frame, 
+            title_stack, 
             text="PHOENIX MUXER", 
-            font=ctk.CTkFont(family="Segoe UI", size=28, weight="bold"),
-            text_color="#F0A500"
+            font=ctk.CTkFont(family="Segoe UI", size=26, weight="bold"),
+            text_color="#b4092c"
         )
-        title_label.pack(side="left")
+        title_label.pack(anchor="w")
+
+        subtitle_label = ctk.CTkLabel(
+            title_stack,
+            text="Subtitle Standardizer & Muxer",
+            font=ctk.CTkFont(size=11),
+            text_color="#555552"
+        )
+        subtitle_label.pack(anchor="w", pady=(0, 0))
         
         self.status_badge = ctk.CTkLabel(
             header_frame, text="STANDBY", font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#888884", fg_color="#242426", corner_radius=8, padx=10, pady=5
+            text_color="#666662", fg_color="#242426", corner_radius=8, padx=10, pady=5
         )
         self.status_badge.pack(side="right", pady=5)
 
@@ -85,13 +96,16 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         settings_wrapper = ctk.CTkFrame(main_frame, fg_color="transparent")
         settings_wrapper.pack(fill="x", pady=10)
         
-        settings_accent = ctk.CTkFrame(settings_wrapper, width=3, fg_color="#F0A500")
+        settings_accent = ctk.CTkFrame(settings_wrapper, width=3, fg_color="#b4092c")
         settings_accent.pack(side="left", fill="y")
         
-        settings_frame = ctk.CTkFrame(settings_wrapper, corner_radius=0, fg_color="#242426", border_width=1, border_color="#3A3A3C")
-        settings_frame.pack(side="right", fill="both", expand=True, ipadx=15, ipady=15)
+        settings_frame = ctk.CTkFrame(settings_wrapper, corner_radius=10, fg_color="#242426", border_width=1, border_color="#3A3A3C")
+        settings_frame.pack(side="right", fill="both", expand=True, ipadx=15, ipady=10)
         
-        ctk.CTkLabel(settings_frame, text="DISPLAY RESOLUTION (ASS)", font=ctk.CTkFont(size=11, weight="bold"), text_color="#888884").pack(anchor="w", pady=(0, 10))
+        ctk.CTkLabel(settings_frame, text="DISPLAY RESOLUTION (ASS)", font=ctk.CTkFont(size=11, weight="bold"), text_color="#888884").pack(anchor="w", pady=(0, 5))
+
+        separator = ctk.CTkFrame(settings_frame, height=1, fg_color="#2E2E30")
+        separator.pack(fill="x", pady=(0, 10))
 
         res_inner = ctk.CTkFrame(settings_frame, fg_color="transparent")
         res_inner.pack(fill="x")
@@ -110,10 +124,10 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         queue_wrapper = ctk.CTkFrame(main_frame, fg_color="transparent")
         queue_wrapper.pack(fill="both", expand=True, pady=10)
         
-        queue_accent = ctk.CTkFrame(queue_wrapper, width=3, fg_color="#F0A500")
+        queue_accent = ctk.CTkFrame(queue_wrapper, width=3, fg_color="#b4092c")
         queue_accent.pack(side="left", fill="y")
         
-        queue_frame = ctk.CTkFrame(queue_wrapper, corner_radius=0, fg_color="#242426", border_width=1, border_color="#3A3A3C")
+        queue_frame = ctk.CTkFrame(queue_wrapper, corner_radius=10, fg_color="#242426", border_width=1, border_color="#3A3A3C")
         queue_frame.pack(side="right", fill="both", expand=True, ipadx=15, ipady=15)
 
         queue_header = ctk.CTkFrame(queue_frame, fg_color="transparent")
@@ -138,6 +152,12 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.queue_listbox = ctk.CTkScrollableFrame(queue_frame, height=120, fg_color="#1C1C1E", border_color="#3A3A3C", border_width=1)
         self.queue_listbox.pack(fill="x")
 
+        self.queue_hint_label = ctk.CTkLabel(
+            self.queue_listbox, text="Drop anime folders here using the button above", 
+            font=ctk.CTkFont(size=11), text_color="#444440"
+        )
+        self.queue_hint_label.pack(pady=40)
+
         # --- Action & Logs ---
         action_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         action_frame.pack(fill="x", pady=(15, 0))
@@ -148,7 +168,7 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.process_btn = ctk.CTkButton(
             button_row, text="INITIALIZE BATCH PROCESS", 
             font=ctk.CTkFont(size=15, weight="bold"), height=50,
-            fg_color="#F0A500", hover_color="#C98A00", text_color="#1C1C1E", state="disabled",
+            fg_color="#b4092c", hover_color="#8a0720", text_color="#FFFFFF", state="disabled",
             command=self.start_processing_thread
         )
         self.process_btn.pack(side="left", fill="x", expand=True, padx=(0, 10))
@@ -173,7 +193,7 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
 
         self.eta_label = ctk.CTkLabel(
             action_frame, text="",
-            font=ctk.CTkFont(size=13, weight="bold"), text_color="#888884"
+            font=ctk.CTkFont(size=13, weight="bold"), text_color="#b4092c"
         )
         self.eta_label.pack(pady=(0, 10))
 
@@ -184,12 +204,12 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.open_output_btn = ctk.CTkButton(
             action_frame, text="📂 Open Output Folder", height=32,
             font=ctk.CTkFont(size=12, weight="bold"), 
-            fg_color="#2C2C2E", hover_color="#3A3A3C", text_color="#F0A500", border_width=1, border_color="#3A3A3C",
+            fg_color="#2C2C2E", hover_color="#3A3A3C", text_color="#b4092c", border_width=1, border_color="#3A3A3C",
             command=_open_last_output
         )
         self.open_output_btn.pack_forget()
 
-        self.log_box = ctk.CTkTextbox(action_frame, height=160, fg_color="#141416", text_color="#A0A09A", font=ctk.CTkFont(family="Consolas", size=11), border_color="#3A3A3C", border_width=1)
+        self.log_box = ctk.CTkTextbox(action_frame, height=220, fg_color="#141416", text_color="#A0A09A", font=ctk.CTkFont(family="Consolas", size=11), border_color="#3A3A3C", border_width=1)
         self.log_box.pack(fill="x")
 
     def log(self, message, level="INFO"):
@@ -301,7 +321,15 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
     def update_queue_ui(self):
         def _update():
             for widget in self.queue_listbox.winfo_children():
-                widget.destroy()
+                if widget != getattr(self, 'queue_hint_label', None):
+                    widget.destroy()
+            
+            if len(self.folder_queue) == 0:
+                if hasattr(self, 'queue_hint_label'):
+                    self.queue_hint_label.pack(pady=40)
+            else:
+                if hasattr(self, 'queue_hint_label'):
+                    self.queue_hint_label.pack_forget()
                 
             for i, folder in enumerate(self.folder_queue):
                 row = ctk.CTkFrame(self.queue_listbox, fg_color="#2C2C2E", corner_radius=6)
@@ -476,10 +504,10 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         if not self.folder_queue: return
         self.is_processing = True
         self.cancel_requested = False
-        self.process_btn.configure(state="disabled", fg_color="#333333", text="PROCESSING IN PROGRESS...")
+        self.process_btn.configure(state="disabled", fg_color="#2C2C2E", text="PROCESSING IN PROGRESS...", text_color="#FFFFFF")
         self.add_folder_btn.configure(state="disabled")
         self.cancel_btn.configure(state="normal")
-        self.status_badge.configure(text="ACTIVE", text_color="#1C1C1E", fg_color="#F0A500")
+        self.status_badge.configure(text="ACTIVE", text_color="#FFFFFF", fg_color="#b4092c")
         if hasattr(self, 'open_output_btn'):
             self.open_output_btn.pack_forget()
         threading.Thread(target=self.process_queue, daemon=True).start()
@@ -487,10 +515,10 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
     def process_queue(self):
         def _finalize_ui():
             self.is_processing = False
-            self.process_btn.configure(state="disabled", fg_color="#F0A500", text="INITIALIZE BATCH PROCESS")
+            self.process_btn.configure(state="disabled", fg_color="#b4092c", text="INITIALIZE BATCH PROCESS", text_color="#FFFFFF")
             self.add_folder_btn.configure(state="normal")
             self.cancel_btn.configure(state="disabled")
-            self.status_badge.configure(text="STANDBY", text_color="#888884", fg_color="#242426")
+            self.status_badge.configure(text="STANDBY", text_color="#666662", fg_color="#242426")
             self.progress_label.configure(text="")
             self.eta_label.configure(text="")
             if hasattr(self, 'last_output_dir') and self.last_output_dir:
