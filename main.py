@@ -207,6 +207,15 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                 else:
                     self.folder_queue.append(folder)
                     self.log(f"Added to queue: {folder}")
+                    
+                    vid_count = len([f for f in os.listdir(folder) if f.endswith(('.mkv', '.mp4'))])
+                    sub_count = len([f for f in os.listdir(subs_path) if f.endswith('.ass')])
+                    folder_name = os.path.basename(folder)
+                    
+                    self.log(f"Preview: Found {vid_count} video(s) and {sub_count} subtitle(s) in '{folder_name}'")
+                    if vid_count != sub_count:
+                        self.log(f"WARNING: Video/subtitle count mismatch — {vid_count} videos vs {sub_count} subtitles", "WARNING")
+                        
                     added_any = True
             
             if not messagebox.askyesno("Add Another?", "Would you like to add another folder?"):
