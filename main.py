@@ -27,10 +27,10 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         super().__init__()
 
         self.title("Phoenix Subs Muxer - Ultimate Edition")
-        self.geometry("850x750")
+        self.geometry("850x800")
         self.resizable(False, False)
-        # OLED Pitch Black Background
-        self.configure(fg_color="#000000") 
+        # Professional Dark Tool Background
+        self.configure(fg_color="#1C1C1E") 
         
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.tools_dir = os.path.join(self.base_dir, "tools")
@@ -48,88 +48,100 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def setup_ui(self):
-        # --- الفريم الرئيسي مع Padding ممتاز ---
+        # --- Main Frame ---
         main_frame = ctk.CTkFrame(self, fg_color="transparent")
         main_frame.pack(fill="both", expand=True, padx=30, pady=30)
 
-        # --- الهيدر (العنوان) ---
+        # --- Header ---
         header_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 20))
         
         title_label = ctk.CTkLabel(
             header_frame, 
             text="PHOENIX MUXER", 
-            font=ctk.CTkFont(family="Segoe UI", size=32, weight="bold"),
-            text_color="#00E5FF" # Neon Cyan
+            font=ctk.CTkFont(family="Segoe UI", size=28, weight="bold"),
+            text_color="#F0A500"
         )
         title_label.pack(side="left")
         
         self.status_badge = ctk.CTkLabel(
-            header_frame, text="⚫ STANDBY", font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#AAAAAA", fg_color="#111111", corner_radius=8, padx=10, pady=5
+            header_frame, text="STANDBY", font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#888884", fg_color="#242426", corner_radius=8, padx=10, pady=5
         )
         self.status_badge.pack(side="right", pady=5)
 
-        # --- كارت الإعدادات ---
-        settings_frame = ctk.CTkFrame(main_frame, corner_radius=12, fg_color="#0A0A0A", border_width=1, border_color="#1A1A1A")
-        settings_frame.pack(fill="x", pady=10, ipadx=15, ipady=15)
+        # --- Settings Card ---
+        settings_wrapper = ctk.CTkFrame(main_frame, fg_color="transparent")
+        settings_wrapper.pack(fill="x", pady=10)
         
-        ctk.CTkLabel(settings_frame, text="DISPLAY RESOLUTION (ASS)", font=ctk.CTkFont(size=12, weight="bold"), text_color="#777777").pack(anchor="w", pady=(0, 10))
+        settings_accent = ctk.CTkFrame(settings_wrapper, width=3, fg_color="#F0A500")
+        settings_accent.pack(side="left", fill="y")
+        
+        settings_frame = ctk.CTkFrame(settings_wrapper, corner_radius=0, fg_color="#242426", border_width=1, border_color="#3A3A3C")
+        settings_frame.pack(side="right", fill="both", expand=True, ipadx=15, ipady=15)
+        
+        ctk.CTkLabel(settings_frame, text="DISPLAY RESOLUTION (ASS)", font=ctk.CTkFont(size=11, weight="bold"), text_color="#888884").pack(anchor="w", pady=(0, 10))
 
         res_inner = ctk.CTkFrame(settings_frame, fg_color="transparent")
         res_inner.pack(fill="x")
 
-        ctk.CTkLabel(res_inner, text="PlayResX:", font=ctk.CTkFont(size=13)).grid(row=0, column=0, padx=(0, 10))
-        self.res_x_entry = ctk.CTkEntry(res_inner, width=100, justify="center", font=ctk.CTkFont(weight="bold"), fg_color="#000000", border_color="#333333")
+        ctk.CTkLabel(res_inner, text="PlayResX:", font=ctk.CTkFont(size=13), text_color="#F5F5F0").grid(row=0, column=0, padx=(0, 10))
+        self.res_x_entry = ctk.CTkEntry(res_inner, width=100, justify="center", font=ctk.CTkFont(weight="bold"), fg_color="#1C1C1E", border_color="#3A3A3C", text_color="#F5F5F0")
         self.res_x_entry.insert(0, "1920")
         self.res_x_entry.grid(row=0, column=1, padx=(0, 40))
 
-        ctk.CTkLabel(res_inner, text="PlayResY:", font=ctk.CTkFont(size=13)).grid(row=0, column=2, padx=(0, 10))
-        self.res_y_entry = ctk.CTkEntry(res_inner, width=100, justify="center", font=ctk.CTkFont(weight="bold"), fg_color="#000000", border_color="#333333")
+        ctk.CTkLabel(res_inner, text="PlayResY:", font=ctk.CTkFont(size=13), text_color="#F5F5F0").grid(row=0, column=2, padx=(0, 10))
+        self.res_y_entry = ctk.CTkEntry(res_inner, width=100, justify="center", font=ctk.CTkFont(weight="bold"), fg_color="#1C1C1E", border_color="#3A3A3C", text_color="#F5F5F0")
         self.res_y_entry.insert(0, "1080")
         self.res_y_entry.grid(row=0, column=3)
 
-        # --- كارت نظام الطابور (Queue System) ---
-        queue_frame = ctk.CTkFrame(main_frame, corner_radius=12, fg_color="#0A0A0A", border_width=1, border_color="#1A1A1A")
-        queue_frame.pack(fill="both", expand=True, pady=10, ipadx=15, ipady=15)
+        # --- Queue Card ---
+        queue_wrapper = ctk.CTkFrame(main_frame, fg_color="transparent")
+        queue_wrapper.pack(fill="both", expand=True, pady=10)
+        
+        queue_accent = ctk.CTkFrame(queue_wrapper, width=3, fg_color="#F0A500")
+        queue_accent.pack(side="left", fill="y")
+        
+        queue_frame = ctk.CTkFrame(queue_wrapper, corner_radius=0, fg_color="#242426", border_width=1, border_color="#3A3A3C")
+        queue_frame.pack(side="right", fill="both", expand=True, ipadx=15, ipady=15)
 
         queue_header = ctk.CTkFrame(queue_frame, fg_color="transparent")
         queue_header.pack(fill="x", pady=(0, 10))
         
-        ctk.CTkLabel(queue_header, text="BATCH PROCESSING QUEUE", font=ctk.CTkFont(size=12, weight="bold"), text_color="#777777").pack(side="left")
+        ctk.CTkLabel(queue_header, text="BATCH PROCESSING QUEUE", font=ctk.CTkFont(size=11, weight="bold"), text_color="#888884").pack(side="left")
         
         self.add_folder_btn = ctk.CTkButton(
             queue_header, text="+ ADD ANIME FOLDER", width=140, height=30,
-            font=ctk.CTkFont(size=12, weight="bold"), fg_color="#7D5FFF", hover_color="#5F3DC4",
+            font=ctk.CTkFont(size=12, weight="bold"), fg_color="#2C2C2E", hover_color="#3A3A3C", text_color="#F5F5F0", border_width=1, border_color="#3A3A3C",
             command=self.add_folder_to_queue
         )
         self.add_folder_btn.pack(side="right")
 
         self.clear_queue_btn = ctk.CTkButton(
             queue_header, text="✕ CLEAR ALL", width=110, height=30,
-            font=ctk.CTkFont(size=12, weight="bold"), fg_color="#333333", hover_color="#555555",
+            font=ctk.CTkFont(size=12, weight="bold"), fg_color="#2C2C2E", hover_color="#3A3A3C", text_color="#F5F5F0", border_width=1, border_color="#3A3A3C",
             command=self.clear_queue
         )
         self.clear_queue_btn.pack(side="right", padx=(0, 10))
 
-        self.queue_listbox = ctk.CTkScrollableFrame(queue_frame, height=120, fg_color="#000000", border_color="#111111", border_width=1)
+        self.queue_listbox = ctk.CTkScrollableFrame(queue_frame, height=120, fg_color="#1C1C1E", border_color="#3A3A3C", border_width=1)
         self.queue_listbox.pack(fill="x")
 
-        # --- كارت التنفيذ والسجلات ---
+        # --- Action & Logs ---
         action_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         action_frame.pack(fill="x", pady=(15, 0))
 
         self.process_btn = ctk.CTkButton(
             action_frame, text="INITIALIZE BATCH PROCESS", 
             font=ctk.CTkFont(size=15, weight="bold"), height=50,
-            fg_color="#00CC66", hover_color="#00994C", state="disabled",
+            fg_color="#F0A500", hover_color="#C98A00", text_color="#1C1C1E", state="disabled",
             command=self.start_processing_thread
         )
         self.process_btn.pack(fill="x", pady=(0, 10))
 
         self.progress_label = ctk.CTkLabel(
             action_frame, text="", 
-            font=ctk.CTkFont(size=13, weight="bold"), text_color="#00E5FF"
+            font=ctk.CTkFont(size=13, weight="bold"), text_color="#888884"
         )
         self.progress_label.pack(pady=(0, 10))
 
@@ -140,12 +152,12 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.open_output_btn = ctk.CTkButton(
             action_frame, text="📂 Open Output Folder", height=32,
             font=ctk.CTkFont(size=12, weight="bold"), 
-            fg_color="#1A1A2E", hover_color="#16213E", text_color="#00E5FF",
+            fg_color="#2C2C2E", hover_color="#3A3A3C", text_color="#F0A500", border_width=1, border_color="#3A3A3C",
             command=_open_last_output
         )
         self.open_output_btn.pack_forget()
 
-        self.log_box = ctk.CTkTextbox(action_frame, height=160, fg_color="#050505", text_color="#00E5FF", font=ctk.CTkFont(family="Consolas", size=11), border_color="#1A1A1A", border_width=1)
+        self.log_box = ctk.CTkTextbox(action_frame, height=160, fg_color="#141416", text_color="#A0A09A", font=ctk.CTkFont(family="Consolas", size=11), border_color="#3A3A3C", border_width=1)
         self.log_box.pack(fill="x")
 
     def log(self, message, level="INFO"):
@@ -243,12 +255,12 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                 widget.destroy()
                 
             for i, folder in enumerate(self.folder_queue):
-                row = ctk.CTkFrame(self.queue_listbox, fg_color="#111111", corner_radius=6)
+                row = ctk.CTkFrame(self.queue_listbox, fg_color="#2C2C2E", corner_radius=6)
                 row.pack(fill="x", pady=2, padx=2)
                 
-                ctk.CTkLabel(row, text=f"{i+1}. {os.path.basename(folder)}", font=ctk.CTkFont(size=12, weight="bold"), text_color="#FFFFFF").pack(side="left", padx=10, pady=5)
+                ctk.CTkLabel(row, text=f"{i+1}. {os.path.basename(folder)}", font=ctk.CTkFont(size=12, weight="bold"), text_color="#F5F5F0").pack(side="left", padx=10, pady=5)
                 
-                remove_btn = ctk.CTkButton(row, text="X", width=30, height=24, fg_color="#FF3333", hover_color="#CC0000", command=lambda f=folder: self.remove_from_queue(f))
+                remove_btn = ctk.CTkButton(row, text="X", width=30, height=24, fg_color="#3A1A1A", hover_color="#5C2020", command=lambda f=folder: self.remove_from_queue(f))
                 remove_btn.pack(side="right", padx=10)
         self.after(0, _update)
 
@@ -408,7 +420,7 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.is_processing = True
         self.process_btn.configure(state="disabled", fg_color="#333333", text="PROCESSING IN PROGRESS...")
         self.add_folder_btn.configure(state="disabled")
-        self.status_badge.configure(text="🟢 ACTIVE", text_color="#00CC66", fg_color="#003311")
+        self.status_badge.configure(text="ACTIVE", text_color="#1C1C1E", fg_color="#F0A500")
         if hasattr(self, 'open_output_btn'):
             self.open_output_btn.pack_forget()
         threading.Thread(target=self.process_queue, daemon=True).start()
@@ -580,9 +592,9 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         
         def _finalize_ui():
             self.is_processing = False
-            self.process_btn.configure(state="disabled", fg_color="#00CC66", text="INITIALIZE BATCH PROCESS")
+            self.process_btn.configure(state="disabled", fg_color="#F0A500", text="INITIALIZE BATCH PROCESS")
             self.add_folder_btn.configure(state="normal")
-            self.status_badge.configure(text="⚫ STANDBY", text_color="#AAAAAA", fg_color="#111111")
+            self.status_badge.configure(text="STANDBY", text_color="#888884", fg_color="#242426")
             self.progress_label.configure(text="")
             if hasattr(self, 'last_output_dir') and self.last_output_dir:
                 self.open_output_btn.pack(fill="x", pady=(5, 0))
