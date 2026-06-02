@@ -415,8 +415,13 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                             self.log(f"Failed to remove temp file {temp_sub_path}: {e}", "WARNING")
             
             self.log(f"--- COMPLETED BATCH: {os.path.basename(folder)} ---", "INFO")
-            self.folder_queue.remove(folder)
-            self.update_queue_ui()
+            
+            def _remove_folder_and_update(f=folder):
+                if f in self.folder_queue:
+                    self.folder_queue.remove(f)
+                    self.update_queue_ui()
+                    
+            self.after(0, _remove_folder_and_update)
 
         self.log("ALL QUEUES PROCESSED SUCCESSFULLY.", "INFO")
         
