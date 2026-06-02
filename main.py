@@ -338,8 +338,16 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
 
     def standardize_ass_file(self, filepath, res_x, res_y, vid_duration=None):
         try:
-            with open(filepath, 'r', encoding='utf-8-sig') as f:
-                lines = f.readlines()
+            lines = None
+            for enc in ['utf-8-sig', 'cp1256', 'latin-1']:
+                try:
+                    with open(filepath, 'r', encoding=enc) as f:
+                        lines = f.readlines()
+                    if enc != 'utf-8-sig':
+                        self.log(f"WARNING: File '{os.path.basename(filepath)}' is not UTF-8, read using {enc}", "WARNING")
+                    break
+                except UnicodeDecodeError:
+                    continue
 
             new_lines = []
             current_section = None
