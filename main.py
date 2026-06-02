@@ -145,22 +145,30 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             self.log("Cannot add folders. Tools are missing.", "WARNING")
             return
             
-        folder = filedialog.askdirectory(title="Select Anime Root Folder")
-        if folder:
+        added_any = False
+        while True:
+            folder = filedialog.askdirectory(title="Select Anime Root Folder")
+            if not folder:
+                break
+                
             if folder in self.folder_queue:
                 self.log(f"Folder already in queue: {os.path.basename(folder)}", "WARNING")
-                return
-                
-            subs_path = os.path.join(folder, "subs")
-            if not os.path.exists(subs_path):
-                self.log(f"Rejected {os.path.basename(folder)}: Missing 'subs' directory.", "ERROR")
-                messagebox.showerror("Structure Error", f"The folder '{os.path.basename(folder)}' does not contain a 'subs' subdirectory.")
-                return
+            else:
+                subs_path = os.path.join(folder, "subs")
+                if not os.path.exists(subs_path):
+                    self.log(f"Rejected {os.path.basename(folder)}: Missing 'subs' directory.", "ERROR")
+                    messagebox.showerror("Structure Error", f"The folder '{os.path.basename(folder)}' does not contain a 'subs' subdirectory.")
+                else:
+                    self.folder_queue.append(folder)
+                    self.log(f"Added to queue: {folder}")
+                    added_any = True
             
-            self.folder_queue.append(folder)
+            if not messagebox.askyesno("Add Another?", "Would you like to add another folder?"):
+                break
+
+        if added_any:
             self.update_queue_ui()
             self.process_btn.configure(state="normal")
-            self.log(f"Added to queue: {folder}")
 
     def update_queue_ui(self):
         def _update():
