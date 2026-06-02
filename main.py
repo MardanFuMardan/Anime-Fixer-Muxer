@@ -333,6 +333,12 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         res_x = self.res_x_entry.get().strip()
         res_y = self.res_y_entry.get().strip()
 
+        count_attempted = 0
+        count_succeeded = 0
+        count_no_sub = 0
+        count_no_audio = 0
+        count_ffmpeg_err = 0
+
         for folder in list(self.folder_queue):
             self.log(f"--- STARTING BATCH: {os.path.basename(folder)} ---", "INFO")
             subs_folder = os.path.join(folder, "subs")
@@ -354,10 +360,13 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                 if not vid_ep:
                     self.log(f"Failed to extract episode number from {video}", "ERROR")
                     continue
+                    
+                count_attempted += 1
 
                 matched_sub = next((s for s in sub_files if self.extract_episode_number(s) == vid_ep), None)
                 if not matched_sub:
                     self.log(f"Skipping Ep {vid_ep}: No matching subtitle found in 'subs' folder.", "ERROR")
+                    count_no_sub += 1
                     continue
 
                 self.log(f"Processing Ep {vid_ep}: Video='{video}', Subtitle='{matched_sub}'")
@@ -375,6 +384,7 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                 best_audio = self.get_best_audio_stream(vid_path)
                 if not best_audio:
                     self.log(f"Skipping Ep {vid_ep}: No Japanese stereo audio track found.", "ERROR")
+                    count_no_audio += 1
                     if os.path.exists(temp_sub_path):
                         os.remove(temp_sub_path)
                     continue
@@ -405,8 +415,10 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                 try:
                     subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, text=True)
                     self.log(f"SUCCESS: Ep {vid_ep} completed.")
+                    count_succeeded += 1
                 except subprocess.CalledProcessError as e:
                     self.log(f"FFmpeg muxing failed for Ep {vid_ep}.", "ERROR")
+                    count_ffmpeg_err += 1
                     if e.stderr:
                         lines = e.stderr.strip().split('\n')
                         last_lines = "\n".join(lines[-5:])
@@ -428,6 +440,17 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             self.after(0, _remove_folder_and_update)
 
         self.log("ALL QUEUES PROCESSED SUCCESSFULLY.", "INFO")
+        
+        summary_msg = (
+            "══ BATCH SUMMARY ══\n"
+            f"Attempted : {count_attempted}\n"
+            f"Succeeded : {count_succeeded}\n"
+            f"No Subtitle : {count_no_sub}\n"
+            f"No JPN Stereo : {count_no_audio}\n"
+            f"FFmpeg Error : {count_ffmpeg_err}\n"
+            "══════════════════"
+        )
+        self.log(summary_msg, "INFO")
         
         def _finalize_ui():
             self.is_processing = False
