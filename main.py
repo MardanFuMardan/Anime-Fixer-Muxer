@@ -32,7 +32,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         self.geometry("850x800")
         self.resizable(False, False)
         # Professional Dark Tool Background
-        self.configure(fg_color="#1C1C1E") 
+        self.configure(bg="#1C1C1E") 
         
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.tools_dir = os.path.join(self.base_dir, "tools")
