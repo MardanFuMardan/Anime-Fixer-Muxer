@@ -4,6 +4,7 @@ import subprocess
 import json
 import logging
 import threading
+import tempfile
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 
@@ -119,8 +120,10 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.log_box.pack(fill="x")
 
     def log(self, message, level="INFO"):
-        self.log_box.insert("end", f"[{level}] {message}\n")
-        self.log_box.see("end")
+        def _append_log():
+            self.log_box.insert("end", f"[{level}] {message}\n")
+            self.log_box.see("end")
+        self.after(0, _append_log)
         if level == "ERROR":
             logger.error(message)
         elif level == "WARNING":
@@ -160,17 +163,19 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             self.log(f"Added to queue: {folder}")
 
     def update_queue_ui(self):
-        for widget in self.queue_listbox.winfo_children():
-            widget.destroy()
-            
-        for i, folder in enumerate(self.folder_queue):
-            row = ctk.CTkFrame(self.queue_listbox, fg_color="#111111", corner_radius=6)
-            row.pack(fill="x", pady=2, padx=2)
-            
-            ctk.CTkLabel(row, text=f"{i+1}. {os.path.basename(folder)}", font=ctk.CTkFont(size=12, weight="bold"), text_color="#FFFFFF").pack(side="left", padx=10, pady=5)
-            
-            remove_btn = ctk.CTkButton(row, text="X", width=30, height=24, fg_color="#FF3333", hover_color="#CC0000", command=lambda f=folder: self.remove_from_queue(f))
-            remove_btn.pack(side="right", padx=10)
+        def _update():
+            for widget in self.queue_listbox.winfo_children():
+                widget.destroy()
+                
+            for i, folder in enumerate(self.folder_queue):
+                row = ctk.CTkFrame(self.queue_listbox, fg_color="#111111", corner_radius=6)
+                row.pack(fill="x", pady=2, padx=2)
+                
+                ctk.CTkLabel(row, text=f"{i+1}. {os.path.basename(folder)}", font=ctk.CTkFont(size=12, weight="bold"), text_color="#FFFFFF").pack(side="left", padx=10, pady=5)
+                
+                remove_btn = ctk.CTkButton(row, text="X", width=30, height=24, fg_color="#FF3333", hover_color="#CC0000", command=lambda f=folder: self.remove_from_queue(f))
+                remove_btn.pack(side="right", padx=10)
+        self.after(0, _update)
 
     def remove_from_queue(self, folder):
         if self.is_processing:
@@ -190,19 +195,20 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         return numbers[-1] if numbers else None
 
     def get_best_audio_stream(self, video_path):
-        cmd = [self.ffprobe_path, '-v', 'error', '-show_entries', 'stream=index,codec_type:stream_tags=language', '-of', 'json', video_path]
+        cmd = [self.ffprobe_path, '-v', 'error', '-show_entries', 'stream=index,codec_type,channels:stream_tags=language', '-of', 'json', video_path]
         try:
             result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             data = json.loads(result.stdout)
             
             audio_streams = [s for s in data.get('streams', []) if s.get('codec_type') == 'audio']
             if not audio_streams: return None
-            if len(audio_streams) == 1: return audio_streams[0]['index']
 
             for stream in audio_streams:
-                if stream.get('tags', {}).get('language', '').lower() in ['jpn', 'ja', 'japanese']:
-                    return stream['index']
-            return audio_streams[0]['index']
+                lang = stream.get('tags', {}).get('language', '').lower()
+                channels = stream.get('channels', 0)
+                if lang in ['jpn', 'ja', 'japanese'] and channels == 2:
+                    return {'index': stream['index'], 'language': lang, 'channels': channels}
+            return None
         except Exception as e:
             self.log(f"Audio probe failed: {e}", "ERROR")
             return None
@@ -307,12 +313,13 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                                 line = ",".join(parts)
                 final_lines.append(line)
 
-            with open(filepath, 'w', encoding='utf-8-sig') as f:
+            fd, temp_path = tempfile.mkstemp(suffix=".ass", text=True)
+            with os.fdopen(fd, 'w', encoding='utf-8-sig') as f:
                 f.writelines(final_lines)
-            return True
+            return temp_path
         except Exception as e:
             self.log(f"Subtitle sanitation failed for {os.path.basename(filepath)}: {e}", "ERROR")
-            return False
+            return None
 
     def start_processing_thread(self):
         if not self.folder_queue: return
@@ -350,53 +357,76 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
 
                 matched_sub = next((s for s in sub_files if self.extract_episode_number(s) == vid_ep), None)
                 if not matched_sub:
-                    self.log(f"No matching subtitle found for Ep {vid_ep}", "WARNING")
+                    self.log(f"Skipping Ep {vid_ep}: No matching subtitle found in 'subs' folder.", "ERROR")
                     continue
 
-                self.log(f"Muxing Ep {vid_ep}...")
+                self.log(f"Processing Ep {vid_ep}: Video='{video}', Subtitle='{matched_sub}'")
                 sub_path = os.path.join(subs_folder, matched_sub)
 
                 # 1. سحب مدة الفيديو
                 vid_duration = self.get_video_duration(vid_path)
 
                 # 2. فرمتة وتأمين التوقيتات داخل الترجمة
-                if not self.standardize_ass_file(sub_path, res_x, res_y, vid_duration):
+                temp_sub_path = self.standardize_ass_file(sub_path, res_x, res_y, vid_duration)
+                if not temp_sub_path:
                     continue
 
                 # 3. سحب الصوت الياباني
-                best_audio_idx = self.get_best_audio_stream(vid_path)
+                best_audio = self.get_best_audio_stream(vid_path)
+                if not best_audio:
+                    self.log(f"Skipping Ep {vid_ep}: No Japanese stereo audio track found.", "ERROR")
+                    if os.path.exists(temp_sub_path):
+                        os.remove(temp_sub_path)
+                    continue
+                
+                self.log(f"Selected Audio - Index: {best_audio['index']}, Lang: {best_audio['language']}, Channels: {best_audio['channels']}")
 
                 # 4. بناء أمر الدمج
-                ffmpeg_cmd = [self.ffmpeg_path, '-y', '-i', vid_path, '-i', sub_path]
-                ffmpeg_cmd.extend(['-map', '0:v:0'])
-                
-                if best_audio_idx is not None:
-                    ffmpeg_cmd.extend(['-map', f'0:{best_audio_idx}'])
-                else:
-                    ffmpeg_cmd.extend(['-map', '0:a?']) 
-                    
-                ffmpeg_cmd.extend(['-map', '1:0'])
+                ffmpeg_cmd = [
+                    self.ffmpeg_path, '-y', 
+                    '-i', vid_path, 
+                    '-i', temp_sub_path,
+                    '-map', '0:v:0',
+                    '-map', f"0:{best_audio['index']}",
+                    '-map', '1:0',
+                    '-c:v', 'copy', 
+                    '-c:a', 'copy', 
+                    '-c:s', 'ass',
+                    '-metadata:s:s:0', 'language=ara',
+                    '-metadata:s:s:0', 'title=Anime Phoenix Subtitles',
+                    '-disposition:s:s:0', 'default'
+                ]
                 
                 if vid_duration:
                     ffmpeg_cmd.extend(['-t', str(vid_duration)])
                     
-                ffmpeg_cmd.extend(['-c:v', 'copy', '-c:a', 'copy', '-c:s', 'ass', out_path])
+                ffmpeg_cmd.append(out_path)
 
                 try:
                     subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
                     self.log(f"SUCCESS: Ep {vid_ep} completed.")
                 except subprocess.CalledProcessError:
                     self.log(f"FFmpeg muxing failed for Ep {vid_ep}.", "ERROR")
+                finally:
+                    if os.path.exists(temp_sub_path):
+                        try:
+                            os.remove(temp_sub_path)
+                        except OSError as e:
+                            self.log(f"Failed to remove temp file {temp_sub_path}: {e}", "WARNING")
             
             self.log(f"--- COMPLETED BATCH: {os.path.basename(folder)} ---", "INFO")
             self.folder_queue.remove(folder)
             self.update_queue_ui()
 
         self.log("ALL QUEUES PROCESSED SUCCESSFULLY.", "INFO")
-        self.is_processing = False
-        self.process_btn.configure(state="disabled", fg_color="#00CC66", text="INITIALIZE BATCH PROCESS")
-        self.add_folder_btn.configure(state="normal")
-        self.status_badge.configure(text="⚫ STANDBY", text_color="#AAAAAA", fg_color="#111111")
+        
+        def _finalize_ui():
+            self.is_processing = False
+            self.process_btn.configure(state="disabled", fg_color="#00CC66", text="INITIALIZE BATCH PROCESS")
+            self.add_folder_btn.configure(state="normal")
+            self.status_badge.configure(text="⚫ STANDBY", text_color="#AAAAAA", fg_color="#111111")
+            
+        self.after(0, _finalize_ui)
 
 if __name__ == "__main__":
     app = PhoenixSubsMuxerFixer()
