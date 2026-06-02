@@ -434,8 +434,24 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         threading.Thread(target=self.process_queue, daemon=True).start()
 
     def process_queue(self):
+        def _finalize_ui():
+            self.is_processing = False
+            self.process_btn.configure(state="disabled", fg_color="#F0A500", text="INITIALIZE BATCH PROCESS")
+            self.add_folder_btn.configure(state="normal")
+            self.status_badge.configure(text="STANDBY", text_color="#888884", fg_color="#242426")
+            self.progress_label.configure(text="")
+            if hasattr(self, 'last_output_dir') and self.last_output_dir:
+                self.open_output_btn.pack(fill="x", pady=(5, 0))
+
         res_x = self.res_x_entry.get().strip()
         res_y = self.res_y_entry.get().strip()
+
+        if not (res_x and res_y and res_x.isdigit() and res_y.isdigit()):
+            def _show_err():
+                messagebox.showerror("Validation Error", "Invalid resolution values. PlayResX and PlayResY must be positive integers.")
+            self.after(0, _show_err)
+            self.after(0, _finalize_ui)
+            return
 
         count_attempted = 0
         count_succeeded = 0
@@ -598,15 +614,6 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         )
         self.log(summary_msg, "INFO")
         
-        def _finalize_ui():
-            self.is_processing = False
-            self.process_btn.configure(state="disabled", fg_color="#F0A500", text="INITIALIZE BATCH PROCESS")
-            self.add_folder_btn.configure(state="normal")
-            self.status_badge.configure(text="STANDBY", text_color="#888884", fg_color="#242426")
-            self.progress_label.configure(text="")
-            if hasattr(self, 'last_output_dir') and self.last_output_dir:
-                self.open_output_btn.pack(fill="x", pady=(5, 0))
-            
         self.after(0, _finalize_ui)
 
 if __name__ == "__main__":
