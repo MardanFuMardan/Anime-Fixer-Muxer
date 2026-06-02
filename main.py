@@ -105,6 +105,13 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         )
         self.add_folder_btn.pack(side="right")
 
+        self.clear_queue_btn = ctk.CTkButton(
+            queue_header, text="✕ CLEAR ALL", width=110, height=30,
+            font=ctk.CTkFont(size=12, weight="bold"), fg_color="#333333", hover_color="#555555",
+            command=self.clear_queue
+        )
+        self.clear_queue_btn.pack(side="right", padx=(0, 10))
+
         self.queue_listbox = ctk.CTkScrollableFrame(queue_frame, height=120, fg_color="#000000", border_color="#111111", border_width=1)
         self.queue_listbox.pack(fill="x")
 
@@ -232,6 +239,13 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         if not self.folder_queue:
             self.process_btn.configure(state="disabled")
         self.log(f"Removed from queue: {os.path.basename(folder)}")
+
+    def clear_queue(self):
+        if self.is_processing:
+            return
+        self.folder_queue.clear()
+        self.update_queue_ui()
+        self.process_btn.configure(state="disabled")
 
     def extract_episode_number(self, filename):
         clean_name = re.sub(r'1080p|720p|2160p|4k|x265|x264|10bit', '', filename, flags=re.IGNORECASE)
