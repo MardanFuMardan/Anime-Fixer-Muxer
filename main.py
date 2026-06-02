@@ -346,6 +346,18 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             os.makedirs(output_dir, exist_ok=True)
 
             video_files = [f for f in os.listdir(folder) if f.endswith(('.mkv', '.mp4'))]
+            
+            def sort_key(f):
+                ep = self.extract_episode_number(f)
+                if ep is not None:
+                    try:
+                        return (0, float(ep))
+                    except ValueError:
+                        return (1, ep)
+                return (2, f)
+                
+            video_files.sort(key=sort_key)
+            
             sub_files = [f for f in os.listdir(subs_folder) if f.endswith('.ass')]
 
             for video in video_files:
