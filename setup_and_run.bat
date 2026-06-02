@@ -32,7 +32,7 @@ if not exist ".venv" (
 :: 4. تحميل المكتبات (بدون كتم الأخطاء عشان نشوف المشكلة فين)
 echo [+] Activating local environment and downloading dependencies...
 .venv\Scripts\python.exe -m pip install --upgrade pip
-.venv\Scripts\pip.exe install customtkinter
+.venv\Scripts\pip.exe install -r requirements.txt
 
 :: 5. فحص ملفات المكس
 if not exist "tools\ffmpeg.exe" set TOOLS_MISSING=1

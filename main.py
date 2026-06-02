@@ -8,6 +8,7 @@ import tempfile
 import shutil
 import time
 import customtkinter as ctk
+from tkinterdnd2 import TkinterDnD, DND_FILES
 from tkinter import filedialog, messagebox
 
 # إعدادات الواجهة (OLED Dark Mode + Neon Accents)
@@ -23,7 +24,7 @@ logger = logging.getLogger("PhoenixLogger")
 logger.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
-class PhoenixSubsMuxerFixer(ctk.CTk):
+class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
     def __init__(self):
         super().__init__()
 
@@ -151,6 +152,9 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
 
         self.queue_listbox = ctk.CTkScrollableFrame(queue_frame, height=120, fg_color="#1C1C1E", border_color="#3A3A3C", border_width=1)
         self.queue_listbox.pack(fill="x")
+        
+        self.queue_listbox.drop_target_register(DND_FILES)
+        self.queue_listbox.dnd_bind('<<Drop>>', self.on_drop)
 
         self.queue_hint_label = ctk.CTkLabel(
             self.queue_listbox, text="Drop anime folders here using the button above", 
@@ -278,6 +282,46 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             self.tools_ready = False
             self.log("CRITICAL: FFmpeg toolkit not found in /tools directory.", "ERROR")
             messagebox.showerror("Error", "FFmpeg tools missing from the tools directory.")
+
+    def on_drop(self, event):
+        if self.is_processing:
+            return
+        if not self.tools_ready:
+            self.log("Cannot add folders. Tools are missing.", "WARNING")
+            return
+            
+        paths = self.tk.splitlist(event.data)
+        added_any = False
+        
+        for path in paths:
+            if not os.path.isdir(path):
+                continue
+                
+            if path in self.folder_queue:
+                self.log(f"Folder already in queue: {os.path.basename(path)}", "WARNING")
+                continue
+                
+            subs_path = os.path.join(path, "subs")
+            if not os.path.exists(subs_path):
+                self.log(f"Rejected {os.path.basename(path)}: Missing 'subs' directory.", "ERROR")
+                continue
+                
+            self.folder_queue.append(path)
+            self.log(f"Added to queue: {path}")
+            
+            vid_count = len([f for f in os.listdir(path) if f.endswith(('.mkv', '.mp4'))])
+            sub_count = len([f for f in os.listdir(subs_path) if f.endswith('.ass')])
+            folder_name = os.path.basename(path)
+            
+            self.log(f"Preview: Found {vid_count} video(s) and {sub_count} subtitle(s) in '{folder_name}'")
+            if vid_count != sub_count:
+                self.log(f"WARNING: Video/subtitle count mismatch — {vid_count} videos vs {sub_count} subtitles", "WARNING")
+                
+            added_any = True
+            
+        if added_any:
+            self.update_queue_ui()
+            self.process_btn.configure(state="normal")
 
     def add_folder_to_queue(self):
         if not self.tools_ready:
