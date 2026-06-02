@@ -117,7 +117,13 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             fg_color="#00CC66", hover_color="#00994C", state="disabled",
             command=self.start_processing_thread
         )
-        self.process_btn.pack(fill="x", pady=(0, 15))
+        self.process_btn.pack(fill="x", pady=(0, 10))
+
+        self.progress_label = ctk.CTkLabel(
+            action_frame, text="", 
+            font=ctk.CTkFont(size=13, weight="bold"), text_color="#00E5FF"
+        )
+        self.progress_label.pack(pady=(0, 10))
 
         self.log_box = ctk.CTkTextbox(action_frame, height=160, fg_color="#050505", text_color="#00E5FF", font=ctk.CTkFont(family="Consolas", size=11), border_color="#1A1A1A", border_width=1)
         self.log_box.pack(fill="x")
@@ -400,87 +406,100 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             
             sub_files = [f for f in os.listdir(subs_folder) if f.endswith('.ass')]
 
+            total_episodes = len(video_files)
+            processed_count = 0
+            
+            def _init_progress(t=total_episodes):
+                self.progress_label.configure(text=f"Processing: 0 / {t}")
+            self.after(0, _init_progress)
+
             for video in video_files:
-                vid_path = os.path.join(folder, video)
-                out_path = os.path.join(output_dir, video)
-
-                if os.path.exists(out_path) and os.path.getsize(out_path) > 5000000:
-                    self.log(f"Skipping Ep: {video} (Already exists in Output - Resume active)", "WARNING")
-                    continue
-
-                vid_ep = self.extract_episode_number(video)
-                if not vid_ep:
-                    self.log(f"Failed to extract episode number from {video}", "ERROR")
-                    continue
-                    
-                count_attempted += 1
-
-                matched_sub = next((s for s in sub_files if self.extract_episode_number(s) == vid_ep), None)
-                if not matched_sub:
-                    self.log(f"Skipping Ep {vid_ep}: No matching subtitle found in 'subs' folder.", "ERROR")
-                    count_no_sub += 1
-                    continue
-
-                self.log(f"Processing Ep {vid_ep}: Video='{video}', Subtitle='{matched_sub}'")
-                sub_path = os.path.join(subs_folder, matched_sub)
-
-                # 1. سحب مدة الفيديو
-                vid_duration = self.get_video_duration(vid_path)
-
-                # 2. فرمتة وتأمين التوقيتات داخل الترجمة
-                temp_sub_path = self.standardize_ass_file(sub_path, res_x, res_y, vid_duration)
-                if not temp_sub_path:
-                    continue
-
-                # 3. سحب الصوت الياباني
-                best_audio = self.get_best_audio_stream(vid_path)
-                if not best_audio:
-                    self.log(f"Skipping Ep {vid_ep}: No Japanese stereo audio track found.", "ERROR")
-                    count_no_audio += 1
-                    if os.path.exists(temp_sub_path):
-                        os.remove(temp_sub_path)
-                    continue
-                
-                self.log(f"Selected Audio - Index: {best_audio['index']}, Lang: {best_audio['language']}, Channels: {best_audio['channels']}")
-
-                # 4. بناء أمر الدمج
-                ffmpeg_cmd = [
-                    self.ffmpeg_path, '-y', 
-                    '-i', vid_path, 
-                    '-i', temp_sub_path,
-                    '-map', '0:v:0',
-                    '-map', f"0:{best_audio['index']}",
-                    '-map', '1:0',
-                    '-c:v', 'copy', 
-                    '-c:a', 'copy', 
-                    '-c:s', 'ass',
-                    '-metadata:s:s:0', 'language=ara',
-                    '-metadata:s:s:0', 'title=Anime Phoenix Subtitles',
-                    '-disposition:s:s:0', 'default'
-                ]
-                
-                if vid_duration:
-                    ffmpeg_cmd.extend(['-t', str(vid_duration)])
-                    
-                ffmpeg_cmd.append(out_path)
-
                 try:
-                    subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, text=True)
-                    self.log(f"SUCCESS: Ep {vid_ep} completed.")
-                    count_succeeded += 1
-                except subprocess.CalledProcessError as e:
-                    self.log(f"FFmpeg muxing failed for Ep {vid_ep}.", "ERROR")
-                    count_ffmpeg_err += 1
-                    if e.stderr:
-                        lines = e.stderr.strip().split('\n')
-                        last_lines = "\n".join(lines[-5:])
-                        self.log(f"FFmpeg Error Details:\n{last_lines}", "ERROR")
-                finally:
-                    if os.path.exists(temp_sub_path):
-                        try:
+                    vid_path = os.path.join(folder, video)
+                    out_path = os.path.join(output_dir, video)
+
+                    if os.path.exists(out_path) and os.path.getsize(out_path) > 5000000:
+                        self.log(f"Skipping Ep: {video} (Already exists in Output - Resume active)", "WARNING")
+                        continue
+
+                    vid_ep = self.extract_episode_number(video)
+                    if not vid_ep:
+                        self.log(f"Failed to extract episode number from {video}", "ERROR")
+                        continue
+                        
+                    count_attempted += 1
+
+                    matched_sub = next((s for s in sub_files if self.extract_episode_number(s) == vid_ep), None)
+                    if not matched_sub:
+                        self.log(f"Skipping Ep {vid_ep}: No matching subtitle found in 'subs' folder.", "ERROR")
+                        count_no_sub += 1
+                        continue
+
+                    self.log(f"Processing Ep {vid_ep}: Video='{video}', Subtitle='{matched_sub}'")
+                    sub_path = os.path.join(subs_folder, matched_sub)
+
+                    # 1. سحب مدة الفيديو
+                    vid_duration = self.get_video_duration(vid_path)
+
+                    # 2. فرمتة وتأمين التوقيتات داخل الترجمة
+                    temp_sub_path = self.standardize_ass_file(sub_path, res_x, res_y, vid_duration)
+                    if not temp_sub_path:
+                        continue
+
+                    # 3. سحب الصوت الياباني
+                    best_audio = self.get_best_audio_stream(vid_path)
+                    if not best_audio:
+                        self.log(f"Skipping Ep {vid_ep}: No Japanese stereo audio track found.", "ERROR")
+                        count_no_audio += 1
+                        if os.path.exists(temp_sub_path):
                             os.remove(temp_sub_path)
-                        except OSError as e:
-                            self.log(f"Failed to remove temp file {temp_sub_path}: {e}", "WARNING")
+                        continue
+                    
+                    self.log(f"Selected Audio - Index: {best_audio['index']}, Lang: {best_audio['language']}, Channels: {best_audio['channels']}")
+
+                    # 4. بناء أمر الدمج
+                    ffmpeg_cmd = [
+                        self.ffmpeg_path, '-y', 
+                        '-i', vid_path, 
+                        '-i', temp_sub_path,
+                        '-map', '0:v:0',
+                        '-map', f"0:{best_audio['index']}",
+                        '-map', '1:0',
+                        '-c:v', 'copy', 
+                        '-c:a', 'copy', 
+                        '-c:s', 'ass',
+                        '-metadata:s:s:0', 'language=ara',
+                        '-metadata:s:s:0', 'title=Anime Phoenix Subtitles',
+                        '-disposition:s:s:0', 'default'
+                    ]
+                    
+                    if vid_duration:
+                        ffmpeg_cmd.extend(['-t', str(vid_duration)])
+                        
+                    ffmpeg_cmd.append(out_path)
+
+                    try:
+                        subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, text=True)
+                        self.log(f"SUCCESS: Ep {vid_ep} completed.")
+                        count_succeeded += 1
+                    except subprocess.CalledProcessError as e:
+                        self.log(f"FFmpeg muxing failed for Ep {vid_ep}.", "ERROR")
+                        count_ffmpeg_err += 1
+                        if e.stderr:
+                            lines = e.stderr.strip().split('\n')
+                            last_lines = "\n".join(lines[-5:])
+                            self.log(f"FFmpeg Error Details:\n{last_lines}", "ERROR")
+                    finally:
+                        if os.path.exists(temp_sub_path):
+                            try:
+                                os.remove(temp_sub_path)
+                            except OSError as e:
+                                self.log(f"Failed to remove temp file {temp_sub_path}: {e}", "WARNING")
+                finally:
+                    processed_count += 1
+                    def _update_progress(c=processed_count, t=total_episodes):
+                        self.progress_label.configure(text=f"Processing: {c} / {t}")
+                    self.after(0, _update_progress)
             
             self.log(f"--- COMPLETED BATCH: {os.path.basename(folder)} ---", "INFO")
             
@@ -509,6 +528,7 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             self.process_btn.configure(state="disabled", fg_color="#00CC66", text="INITIALIZE BATCH PROCESS")
             self.add_folder_btn.configure(state="normal")
             self.status_badge.configure(text="⚫ STANDBY", text_color="#AAAAAA", fg_color="#111111")
+            self.progress_label.configure(text="")
             
         self.after(0, _finalize_ui)
 
