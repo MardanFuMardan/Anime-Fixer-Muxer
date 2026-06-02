@@ -29,10 +29,10 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         super().__init__()
 
         self.title("Phoenix Subs Muxer - Ultimate Edition")
-        self.geometry("850x800")
+        self.geometry("900x860")
         self.resizable(False, False)
         # Professional Dark Tool Background
-        self.configure(bg="#1C1C1E") 
+        self.configure(bg="#0A0A0B") 
         
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.tools_dir = os.path.join(self.base_dir, "tools")
@@ -52,13 +52,17 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def setup_ui(self):
+        # Decorative top border
+        top_border = ctk.CTkFrame(self, height=3, fg_color="#b4092c", corner_radius=0)
+        top_border.pack(fill="x", padx=0, pady=0)
+
         # --- Main Frame ---
         main_frame = ctk.CTkFrame(self, fg_color="transparent")
         main_frame.pack(fill="both", expand=True, padx=30, pady=30)
 
         # --- Header ---
         header_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(0, 20))
+        header_frame.pack(fill="x", pady=(0, 15))
 
         title_stack = ctk.CTkFrame(header_frame, fg_color="transparent")
         title_stack.pack(side="left")
@@ -66,99 +70,94 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         title_label = ctk.CTkLabel(
             title_stack, 
             text="PHOENIX MUXER", 
-            font=ctk.CTkFont(family="Segoe UI", size=26, weight="bold"),
+            font=ctk.CTkFont(family="Consolas", size=30, weight="bold"),
             text_color="#b4092c"
         )
         title_label.pack(anchor="w")
 
         subtitle_label = ctk.CTkLabel(
             title_stack,
-            text="Subtitle Standardizer & Muxer",
-            font=ctk.CTkFont(size=11),
-            text_color="#555552"
+            text="SUBTITLE STANDARDIZER & MUXER v2.0",
+            font=ctk.CTkFont(family="Consolas", size=10),
+            text_color="#3a3a3e"
         )
         subtitle_label.pack(anchor="w", pady=(0, 0))
         
         self.status_badge = ctk.CTkLabel(
-            header_frame, text="STANDBY", font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#666662", fg_color="#242426", corner_radius=8, padx=10, pady=5
+            header_frame, text="[ STANDBY ]", font=ctk.CTkFont(family="Consolas", size=14, weight="bold"),
+            text_color="#3a3a3e", fg_color="transparent", corner_radius=0, padx=10, pady=5
         )
         self.status_badge.pack(side="right", pady=5)
 
         self.theme_btn = ctk.CTkButton(
-            header_frame, text="☀", width=36, height=36, corner_radius=8,
-            font=ctk.CTkFont(size=18),
-            fg_color="#2C2C2E", hover_color="#3A3A3C",
+            header_frame, text="☀", width=36, height=36, corner_radius=4,
+            font=ctk.CTkFont(family="Consolas", size=18),
+            fg_color="transparent", hover_color="#1a1a1e", border_width=1, border_color="#2a2a2e",
             command=self.toggle_theme
         )
         self.theme_btn.pack(side="right", padx=(0, 10))
 
-        # --- Settings Card ---
-        settings_wrapper = ctk.CTkFrame(main_frame, fg_color="transparent")
-        settings_wrapper.pack(fill="x", pady=10)
-        
-        settings_accent = ctk.CTkFrame(settings_wrapper, width=3, fg_color="#b4092c")
-        settings_accent.pack(side="left", fill="y")
-        
-        settings_frame = ctk.CTkFrame(settings_wrapper, corner_radius=10, fg_color="#242426", border_width=1, border_color="#3A3A3C")
-        settings_frame.pack(side="right", fill="both", expand=True, ipadx=15, ipady=10)
-        
-        ctk.CTkLabel(settings_frame, text="DISPLAY RESOLUTION (ASS)", font=ctk.CTkFont(size=11, weight="bold"), text_color="#888884").pack(anchor="w", pady=(0, 5))
+        # Horizontal divider below header
+        header_divider = ctk.CTkFrame(main_frame, height=1, fg_color="#1e1e22")
+        header_divider.pack(fill="x", pady=(0, 15))
 
-        separator = ctk.CTkFrame(settings_frame, height=1, fg_color="#2E2E30")
+        # --- Settings Card ---
+        settings_frame = ctk.CTkFrame(main_frame, fg_color="#0e0e12", corner_radius=6, border_width=1, border_color="#1e1e26")
+        settings_frame.pack(fill="x", ipadx=15, ipady=12, pady=8)
+        
+        ctk.CTkLabel(settings_frame, text="// DISPLAY RESOLUTION", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#b4092c").pack(anchor="w", pady=(0, 5))
+
+        separator = ctk.CTkFrame(settings_frame, height=1, fg_color="#1e1e26")
         separator.pack(fill="x", pady=(0, 10))
 
         res_inner = ctk.CTkFrame(settings_frame, fg_color="transparent")
         res_inner.pack(fill="x")
 
-        ctk.CTkLabel(res_inner, text="PlayResX:", font=ctk.CTkFont(size=13), text_color="#F5F5F0").grid(row=0, column=0, padx=(0, 10))
-        self.res_x_entry = ctk.CTkEntry(res_inner, width=100, justify="center", font=ctk.CTkFont(weight="bold"), fg_color="#1C1C1E", border_color="#3A3A3C", text_color="#F5F5F0")
+        ctk.CTkLabel(res_inner, text="PlayResX:", font=ctk.CTkFont(family="Consolas", size=12), text_color="#888890").grid(row=0, column=0, padx=(0, 10))
+        self.res_x_entry = ctk.CTkEntry(res_inner, width=100, justify="center", font=ctk.CTkFont(family="Consolas", weight="bold"), fg_color="#06060a", border_color="#b4092c", border_width=1, text_color="#e0e0e0", corner_radius=4)
         self.res_x_entry.insert(0, "1920")
         self.res_x_entry.grid(row=0, column=1, padx=(0, 40))
 
-        ctk.CTkLabel(res_inner, text="PlayResY:", font=ctk.CTkFont(size=13), text_color="#F5F5F0").grid(row=0, column=2, padx=(0, 10))
-        self.res_y_entry = ctk.CTkEntry(res_inner, width=100, justify="center", font=ctk.CTkFont(weight="bold"), fg_color="#1C1C1E", border_color="#3A3A3C", text_color="#F5F5F0")
+        ctk.CTkLabel(res_inner, text="PlayResY:", font=ctk.CTkFont(family="Consolas", size=12), text_color="#888890").grid(row=0, column=2, padx=(0, 10))
+        self.res_y_entry = ctk.CTkEntry(res_inner, width=100, justify="center", font=ctk.CTkFont(family="Consolas", weight="bold"), fg_color="#06060a", border_color="#b4092c", border_width=1, text_color="#e0e0e0", corner_radius=4)
         self.res_y_entry.insert(0, "1080")
         self.res_y_entry.grid(row=0, column=3)
 
         # --- Queue Card ---
-        queue_wrapper = ctk.CTkFrame(main_frame, fg_color="transparent")
-        queue_wrapper.pack(fill="both", expand=True, pady=10)
-        
-        queue_accent = ctk.CTkFrame(queue_wrapper, width=3, fg_color="#b4092c")
-        queue_accent.pack(side="left", fill="y")
-        
-        queue_frame = ctk.CTkFrame(queue_wrapper, corner_radius=10, fg_color="#242426", border_width=1, border_color="#3A3A3C")
-        queue_frame.pack(side="right", fill="both", expand=True, ipadx=15, ipady=15)
+        queue_frame = ctk.CTkFrame(main_frame, fg_color="#0e0e12", corner_radius=6, border_width=1, border_color="#1e1e26")
+        queue_frame.pack(fill="both", expand=True, ipadx=15, ipady=12, pady=8)
 
         queue_header = ctk.CTkFrame(queue_frame, fg_color="transparent")
-        queue_header.pack(fill="x", pady=(0, 10))
+        queue_header.pack(fill="x", pady=(0, 5))
         
-        ctk.CTkLabel(queue_header, text="BATCH PROCESSING QUEUE", font=ctk.CTkFont(size=11, weight="bold"), text_color="#888884").pack(side="left")
+        ctk.CTkLabel(queue_header, text="// BATCH QUEUE", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#b4092c").pack(side="left")
         
         self.add_folder_btn = ctk.CTkButton(
             queue_header, text="+ ADD ANIME FOLDER", width=140, height=30,
-            font=ctk.CTkFont(size=12, weight="bold"), fg_color="#2C2C2E", hover_color="#3A3A3C", text_color="#F5F5F0", border_width=1, border_color="#3A3A3C",
+            font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#1a1a1e", text_color="#c0c0c8", border_width=1, border_color="#2a2a2e", corner_radius=4,
             command=self.add_folder_to_queue
         )
         self.add_folder_btn.pack(side="right")
 
         self.clear_queue_btn = ctk.CTkButton(
             queue_header, text="✕ CLEAR ALL", width=110, height=30,
-            font=ctk.CTkFont(size=12, weight="bold"), fg_color="#2C2C2E", hover_color="#3A3A3C", text_color="#F5F5F0", border_width=1, border_color="#3A3A3C",
+            font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#1a1a1e", text_color="#c0c0c8", border_width=1, border_color="#2a2a2e", corner_radius=4,
             command=self.clear_queue
         )
         self.clear_queue_btn.pack(side="right", padx=(0, 10))
 
-        self.queue_listbox = ctk.CTkScrollableFrame(queue_frame, height=120, fg_color="#1C1C1E", border_color="#3A3A3C", border_width=1)
+        queue_separator = ctk.CTkFrame(queue_frame, height=1, fg_color="#1e1e26")
+        queue_separator.pack(fill="x", pady=(5, 10))
+
+        self.queue_listbox = ctk.CTkScrollableFrame(queue_frame, height=120, fg_color="#06060a", border_color="#1e1e26", border_width=1)
         self.queue_listbox.pack(fill="x")
         
         self.queue_listbox.drop_target_register(DND_FILES)
         self.queue_listbox.dnd_bind('<<Drop>>', self.on_drop)
 
         self.queue_hint_label = ctk.CTkLabel(
-            self.queue_listbox, text="Drop anime folders here using the button above", 
-            font=ctk.CTkFont(size=11), text_color="#444440"
+            self.queue_listbox, text="_ drop or add folders to queue", 
+            font=ctk.CTkFont(family="Consolas", size=11), text_color="#2a2a2e"
         )
         self.queue_hint_label.pack(pady=40)
 
@@ -171,49 +170,52 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         self.process_btn = ctk.CTkButton(
             button_row, text="INITIALIZE BATCH PROCESS", 
-            font=ctk.CTkFont(size=15, weight="bold"), height=50,
-            fg_color="#b4092c", hover_color="#8a0720", text_color="#FFFFFF", state="disabled",
+            font=ctk.CTkFont(family="Consolas", size=15, weight="bold"), height=48, corner_radius=4,
+            fg_color="#0e0e12", hover_color="#8a0720", text_color="#2a2a2e", border_width=1, border_color="#1e1e26", state="disabled",
             command=self.start_processing_thread
         )
         self.process_btn.pack(side="left", fill="x", expand=True, padx=(0, 10))
 
         def _cancel_command():
             self.cancel_requested = True
-            self.cancel_btn.configure(state="disabled")
+            self.cancel_btn.configure(state="disabled", text_color="#2a2a2e", border_color="#1e1e26")
 
         self.cancel_btn = ctk.CTkButton(
-            button_row, text="⬛ CANCEL", width=120, height=50,
-            font=ctk.CTkFont(size=15, weight="bold"),
-            fg_color="#3A1A1A", hover_color="#5C2020", text_color="#FF6B6B", state="disabled",
+            button_row, text="[ CANCEL ]", width=120, height=48, corner_radius=4,
+            font=ctk.CTkFont(family="Consolas", size=14, weight="bold"),
+            fg_color="transparent", hover_color="#1a0408", text_color="#b4092c", border_width=1, border_color="#b4092c", state="disabled",
             command=_cancel_command
         )
+        self.cancel_btn.configure(text_color="#2a2a2e", border_color="#1e1e26") # Initially disabled state
         self.cancel_btn.pack(side="right")
 
         self.progress_label = ctk.CTkLabel(
             action_frame, text="", 
-            font=ctk.CTkFont(size=13, weight="bold"), text_color="#888884"
+            font=ctk.CTkFont(family="Consolas", size=13, weight="bold"), text_color="#888890"
         )
-        self.progress_label.pack(pady=(0, 10))
+        self.progress_label.pack(pady=(0, 5))
 
         self.eta_label = ctk.CTkLabel(
             action_frame, text="",
-            font=ctk.CTkFont(size=13, weight="bold"), text_color="#b4092c"
+            font=ctk.CTkFont(family="Consolas", size=12), text_color="#b4092c"
         )
-        self.eta_label.pack(pady=(0, 10))
+        self.eta_label.pack(pady=(0, 5))
 
         def _open_last_output():
             if hasattr(self, 'last_output_dir') and os.path.exists(self.last_output_dir):
                 os.startfile(self.last_output_dir)
 
         self.open_output_btn = ctk.CTkButton(
-            action_frame, text="📂 Open Output Folder", height=32,
-            font=ctk.CTkFont(size=12, weight="bold"), 
-            fg_color="#2C2C2E", hover_color="#3A3A3C", text_color="#b4092c", border_width=1, border_color="#3A3A3C",
+            action_frame, text="[ OPEN OUTPUT FOLDER ]", height=32, corner_radius=4,
+            font=ctk.CTkFont(family="Consolas", size=12), 
+            fg_color="transparent", hover_color="#1a1a1e", text_color="#b4092c", border_width=1, border_color="#2a0810",
             command=_open_last_output
         )
         self.open_output_btn.pack_forget()
 
-        self.log_box = ctk.CTkTextbox(action_frame, height=220, fg_color="#141416", text_color="#A0A09A", font=ctk.CTkFont(family="Consolas", size=11), border_color="#3A3A3C", border_width=1)
+        ctk.CTkLabel(action_frame, text="// SYSTEM LOG", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#b4092c").pack(anchor="w", pady=(8, 4))
+
+        self.log_box = ctk.CTkTextbox(action_frame, height=230, fg_color="#06060a", text_color="#606068", font=ctk.CTkFont(family="Consolas", size=11), border_color="#1e1e26", border_width=1)
         self.log_box.pack(fill="x")
 
     def log(self, message, level="INFO"):
@@ -360,7 +362,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         if added_any:
             self.update_queue_ui()
-            self.process_btn.configure(state="normal")
+            self.process_btn.configure(state="normal", fg_color="#b4092c", text_color="#ffffff", border_width=0)
 
     def update_queue_ui(self):
         def _update():
@@ -376,12 +378,12 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                     self.queue_hint_label.pack_forget()
                 
             for i, folder in enumerate(self.folder_queue):
-                row = ctk.CTkFrame(self.queue_listbox, fg_color="#2C2C2E", corner_radius=6)
+                row = ctk.CTkFrame(self.queue_listbox, fg_color="#0e0e12", corner_radius=4, border_width=1, border_color="#1e1e26")
                 row.pack(fill="x", pady=2, padx=2)
                 
-                ctk.CTkLabel(row, text=f"{i+1}. {os.path.basename(folder)}", font=ctk.CTkFont(size=12, weight="bold"), text_color="#F5F5F0").pack(side="left", padx=10, pady=5)
+                ctk.CTkLabel(row, text=f"{i+1}. {os.path.basename(folder)}", font=ctk.CTkFont(family="Consolas", size=12, weight="bold"), text_color="#c0c0c8").pack(side="left", padx=10, pady=5)
                 
-                remove_btn = ctk.CTkButton(row, text="X", width=30, height=24, fg_color="#3A1A1A", hover_color="#5C2020", command=lambda f=folder: self.remove_from_queue(f))
+                remove_btn = ctk.CTkButton(row, text="[X]", width=30, height=24, font=ctk.CTkFont(family="Consolas", size=11), fg_color="transparent", hover_color="#2a0810", text_color="#b4092c", border_width=1, border_color="#2a0810", command=lambda f=folder: self.remove_from_queue(f))
                 remove_btn.pack(side="right", padx=10)
         self.after(0, _update)
 
@@ -391,7 +393,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         self.folder_queue.remove(folder)
         self.update_queue_ui()
         if not self.folder_queue:
-            self.process_btn.configure(state="disabled")
+            self.process_btn.configure(state="disabled", fg_color="#0e0e12", text_color="#2a2a2e", border_width=1, border_color="#1e1e26")
         self.log(f"Removed from queue: {os.path.basename(folder)}")
 
     def clear_queue(self):
@@ -399,7 +401,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             return
         self.folder_queue.clear()
         self.update_queue_ui()
-        self.process_btn.configure(state="disabled")
+        self.process_btn.configure(state="disabled", fg_color="#0e0e12", text_color="#2a2a2e", border_width=1, border_color="#1e1e26")
 
     def extract_episode_number(self, filename):
         clean_name = re.sub(r'1080p|720p|2160p|4k|x265|x264|10bit', '', filename, flags=re.IGNORECASE)
@@ -565,10 +567,10 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         if not self.folder_queue: return
         self.is_processing = True
         self.cancel_requested = False
-        self.process_btn.configure(state="disabled", fg_color="#2C2C2E", text="PROCESSING IN PROGRESS...", text_color="#FFFFFF")
+        self.process_btn.configure(state="disabled", fg_color="#1a0408", text_color="#b4092c", border_width=1, border_color="#b4092c", text="// PROCESSING...")
         self.add_folder_btn.configure(state="disabled")
-        self.cancel_btn.configure(state="normal")
-        self.status_badge.configure(text="ACTIVE", text_color="#FFFFFF", fg_color="#b4092c")
+        self.cancel_btn.configure(state="normal", text_color="#b4092c", border_color="#b4092c")
+        self.status_badge.configure(text="[ ACTIVE ]", text_color="#b4092c", fg_color="transparent")
         if hasattr(self, 'open_output_btn'):
             self.open_output_btn.pack_forget()
         threading.Thread(target=self.process_queue, daemon=True).start()
@@ -576,10 +578,10 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
     def process_queue(self):
         def _finalize_ui():
             self.is_processing = False
-            self.process_btn.configure(state="disabled", fg_color="#b4092c", text="INITIALIZE BATCH PROCESS", text_color="#FFFFFF")
+            self.process_btn.configure(state="disabled", fg_color="#b4092c", text_color="#ffffff", border_width=0, text="INITIALIZE BATCH PROCESS")
             self.add_folder_btn.configure(state="normal")
-            self.cancel_btn.configure(state="disabled")
-            self.status_badge.configure(text="STANDBY", text_color="#666662", fg_color="#242426")
+            self.cancel_btn.configure(state="disabled", text_color="#2a2a2e", border_color="#1e1e26")
+            self.status_badge.configure(text="[ STANDBY ]", text_color="#3a3a3e", fg_color="transparent")
             self.progress_label.configure(text="")
             self.eta_label.configure(text="")
             if hasattr(self, 'last_output_dir') and self.last_output_dir:
@@ -750,13 +752,13 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                     remaining = avg_per_ep * (total_episodes - processed_count)
                     
                     if processed_count == total_episodes:
-                        eta_text = "ETA: Done"
+                        eta_text = "// ETA: Done"
                     else:
                         m, s = divmod(int(remaining), 60)
-                        eta_text = f"ETA: {m}m {s}s"
+                        eta_text = f"// ETA: {m}m {s}s"
                         
                     def _update_progress(c=processed_count, t=total_episodes, eta=eta_text):
-                        self.progress_label.configure(text=f"Processing: {c} / {t}")
+                        self.progress_label.configure(text=f"// PROCESSING: {c} / {t}")
                         self.eta_label.configure(text=eta)
                     self.after(0, _update_progress)
             
