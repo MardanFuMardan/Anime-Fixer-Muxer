@@ -403,10 +403,14 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                 ffmpeg_cmd.append(out_path)
 
                 try:
-                    subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                    subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, text=True)
                     self.log(f"SUCCESS: Ep {vid_ep} completed.")
-                except subprocess.CalledProcessError:
+                except subprocess.CalledProcessError as e:
                     self.log(f"FFmpeg muxing failed for Ep {vid_ep}.", "ERROR")
+                    if e.stderr:
+                        lines = e.stderr.strip().split('\n')
+                        last_lines = "\n".join(lines[-5:])
+                        self.log(f"FFmpeg Error Details:\n{last_lines}", "ERROR")
                 finally:
                     if os.path.exists(temp_sub_path):
                         try:
