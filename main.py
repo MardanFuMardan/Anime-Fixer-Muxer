@@ -58,11 +58,11 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         # --- Main Frame ---
         main_frame = ctk.CTkFrame(self, fg_color="transparent")
-        main_frame.pack(fill="both", expand=True, padx=30, pady=30)
+        main_frame.pack(fill="both", expand=True, padx=25, pady=(10, 15))
 
         # --- Header ---
         header_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(0, 15))
+        header_frame.pack(fill="x", pady=(0, 8))
 
         title_stack = ctk.CTkFrame(header_frame, fg_color="transparent")
         title_stack.pack(side="left")
@@ -99,19 +99,19 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         # Horizontal divider below header
         header_divider = ctk.CTkFrame(main_frame, height=1, fg_color="#1e1e22")
-        header_divider.pack(fill="x", pady=(0, 15))
+        header_divider.pack(fill="x", pady=(0, 10))
 
         # --- Settings Card ---
         settings_frame = ctk.CTkFrame(main_frame, fg_color="#0e0e12", corner_radius=6, border_width=1, border_color="#1e1e26")
-        settings_frame.pack(fill="x", ipadx=15, ipady=12, pady=8)
+        settings_frame.pack(fill="x", ipadx=15, ipady=8, pady=(0, 6))
         
-        ctk.CTkLabel(settings_frame, text="// DISPLAY RESOLUTION", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#b4092c").pack(anchor="w", pady=(0, 5))
+        ctk.CTkLabel(settings_frame, text="// DISPLAY RESOLUTION", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#b4092c").pack(anchor="w", pady=(0, 6))
 
         separator = ctk.CTkFrame(settings_frame, height=1, fg_color="#1e1e26")
-        separator.pack(fill="x", pady=(0, 10))
+        separator.pack(fill="x", pady=(0, 8))
 
         res_inner = ctk.CTkFrame(settings_frame, fg_color="transparent")
-        res_inner.pack(fill="x")
+        res_inner.pack(fill="x", pady=(2, 0))
 
         ctk.CTkLabel(res_inner, text="PlayResX:", font=ctk.CTkFont(family="Consolas", size=12), text_color="#888890").grid(row=0, column=0, padx=(0, 10))
         self.res_x_entry = ctk.CTkEntry(res_inner, width=100, justify="center", font=ctk.CTkFont(family="Consolas", weight="bold"), fg_color="#06060a", border_color="#b4092c", border_width=1, text_color="#e0e0e0", corner_radius=4)
@@ -125,7 +125,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         # --- Queue Card ---
         queue_frame = ctk.CTkFrame(main_frame, fg_color="#0e0e12", corner_radius=6, border_width=1, border_color="#1e1e26")
-        queue_frame.pack(fill="both", expand=True, ipadx=15, ipady=12, pady=8)
+        queue_frame.pack(fill="both", expand=True, ipadx=15, ipady=12, pady=(0, 6))
 
         queue_header = ctk.CTkFrame(queue_frame, fg_color="transparent")
         queue_header.pack(fill="x", pady=(0, 5))
@@ -163,10 +163,10 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         # --- Action & Logs ---
         action_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        action_frame.pack(fill="x", pady=(15, 0))
+        action_frame.pack(fill="x", pady=(8, 0))
 
         button_row = ctk.CTkFrame(action_frame, fg_color="transparent")
-        button_row.pack(fill="x", pady=(0, 10))
+        button_row.pack(fill="x", pady=(0, 6))
 
         self.process_btn = ctk.CTkButton(
             button_row, text="INITIALIZE BATCH PROCESS", 
@@ -193,13 +193,13 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             action_frame, text="", 
             font=ctk.CTkFont(family="Consolas", size=13, weight="bold"), text_color="#888890"
         )
-        self.progress_label.pack(pady=(0, 5))
+        self.progress_label.pack(pady=(0, 3))
 
         self.eta_label = ctk.CTkLabel(
             action_frame, text="",
             font=ctk.CTkFont(family="Consolas", size=12), text_color="#b4092c"
         )
-        self.eta_label.pack(pady=(0, 5))
+        self.eta_label.pack(pady=(0, 3))
 
         def _open_last_output():
             if hasattr(self, 'last_output_dir') and os.path.exists(self.last_output_dir):
@@ -213,10 +213,10 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         )
         self.open_output_btn.pack_forget()
 
-        ctk.CTkLabel(action_frame, text="// SYSTEM LOG", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#b4092c").pack(anchor="w", pady=(8, 4))
+        ctk.CTkLabel(action_frame, text="// SYSTEM LOG", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#b4092c").pack(anchor="w", pady=(6, 3))
 
         self.log_box = ctk.CTkTextbox(action_frame, height=230, fg_color="#06060a", text_color="#606068", font=ctk.CTkFont(family="Consolas", size=11), border_color="#1e1e26", border_width=1)
-        self.log_box.pack(fill="x")
+        self.log_box.pack(fill="x", pady=0)
 
     def log(self, message, level="INFO"):
         def _append_log():
