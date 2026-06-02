@@ -40,6 +40,7 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.folder_queue = []
         self.tools_ready = False
         self.is_processing = False
+        self.cancel_requested = False
         
         self.setup_ui()
         self.load_settings()
@@ -131,13 +132,28 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         action_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         action_frame.pack(fill="x", pady=(15, 0))
 
+        button_row = ctk.CTkFrame(action_frame, fg_color="transparent")
+        button_row.pack(fill="x", pady=(0, 10))
+
         self.process_btn = ctk.CTkButton(
-            action_frame, text="INITIALIZE BATCH PROCESS", 
+            button_row, text="INITIALIZE BATCH PROCESS", 
             font=ctk.CTkFont(size=15, weight="bold"), height=50,
             fg_color="#F0A500", hover_color="#C98A00", text_color="#1C1C1E", state="disabled",
             command=self.start_processing_thread
         )
-        self.process_btn.pack(fill="x", pady=(0, 10))
+        self.process_btn.pack(side="left", fill="x", expand=True, padx=(0, 10))
+
+        def _cancel_command():
+            self.cancel_requested = True
+            self.cancel_btn.configure(state="disabled")
+
+        self.cancel_btn = ctk.CTkButton(
+            button_row, text="⬛ CANCEL", width=120, height=50,
+            font=ctk.CTkFont(size=15, weight="bold"),
+            fg_color="#3A1A1A", hover_color="#5C2020", text_color="#FF6B6B", state="disabled",
+            command=_cancel_command
+        )
+        self.cancel_btn.pack(side="right")
 
         self.progress_label = ctk.CTkLabel(
             action_frame, text="", 
@@ -426,8 +442,10 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
     def start_processing_thread(self):
         if not self.folder_queue: return
         self.is_processing = True
+        self.cancel_requested = False
         self.process_btn.configure(state="disabled", fg_color="#333333", text="PROCESSING IN PROGRESS...")
         self.add_folder_btn.configure(state="disabled")
+        self.cancel_btn.configure(state="normal")
         self.status_badge.configure(text="ACTIVE", text_color="#1C1C1E", fg_color="#F0A500")
         if hasattr(self, 'open_output_btn'):
             self.open_output_btn.pack_forget()
@@ -438,6 +456,7 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             self.is_processing = False
             self.process_btn.configure(state="disabled", fg_color="#F0A500", text="INITIALIZE BATCH PROCESS")
             self.add_folder_btn.configure(state="normal")
+            self.cancel_btn.configure(state="disabled")
             self.status_badge.configure(text="STANDBY", text_color="#888884", fg_color="#242426")
             self.progress_label.configure(text="")
             if hasattr(self, 'last_output_dir') and self.last_output_dir:
@@ -460,6 +479,8 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         count_ffmpeg_err = 0
 
         for folder in list(self.folder_queue):
+            if self.cancel_requested:
+                break
             self.log(f"--- STARTING BATCH: {os.path.basename(folder)} ---", "INFO")
             subs_folder = os.path.join(folder, "subs")
             output_dir = os.path.join(folder, "Phoenix_Output")
@@ -508,6 +529,10 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                 try:
                     vid_path = os.path.join(folder, video)
                     out_path = os.path.join(output_dir, video)
+
+                    if self.cancel_requested:
+                        self.log("CANCELLED by user.", "WARNING")
+                        break
 
                     if os.path.exists(out_path) and os.path.getsize(out_path) > 5000000:
                         self.log(f"Skipping Ep: {video} (Already exists in Output - Resume active)", "WARNING")
@@ -586,6 +611,11 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                                 os.remove(temp_sub_path)
                             except OSError as e:
                                 self.log(f"Failed to remove temp file {temp_sub_path}: {e}", "WARNING")
+                        if self.cancel_requested and os.path.exists(out_path):
+                            try:
+                                os.remove(out_path)
+                            except OSError:
+                                pass
                 finally:
                     processed_count += 1
                     def _update_progress(c=processed_count, t=total_episodes):
