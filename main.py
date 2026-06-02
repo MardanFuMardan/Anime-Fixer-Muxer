@@ -41,6 +41,7 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.tools_ready = False
         self.is_processing = False
         self.cancel_requested = False
+        self.theme_mode = "dark"
         
         self.setup_ui()
         self.load_settings()
@@ -70,6 +71,14 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             text_color="#888884", fg_color="#242426", corner_radius=8, padx=10, pady=5
         )
         self.status_badge.pack(side="right", pady=5)
+
+        self.theme_btn = ctk.CTkButton(
+            header_frame, text="☀", width=36, height=36, corner_radius=8,
+            font=ctk.CTkFont(size=18),
+            fg_color="#2C2C2E", hover_color="#3A3A3C",
+            command=self.toggle_theme
+        )
+        self.theme_btn.pack(side="right", padx=(0, 10))
 
         # --- Settings Card ---
         settings_wrapper = ctk.CTkFrame(main_frame, fg_color="transparent")
@@ -201,6 +210,12 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                 if "playres_y" in data:
                     self.res_y_entry.delete(0, 'end')
                     self.res_y_entry.insert(0, str(data["playres_y"]))
+                if "theme_mode" in data:
+                    self.theme_mode = data["theme_mode"]
+                    ctk.set_appearance_mode(self.theme_mode)
+                    if self.theme_mode == "light":
+                        if hasattr(self, 'theme_btn'):
+                            self.theme_btn.configure(text="🌙")
         except Exception:
             pass
 
@@ -209,13 +224,24 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         try:
             data = {
                 "playres_x": self.res_x_entry.get().strip() or "1920",
-                "playres_y": self.res_y_entry.get().strip() or "1080"
+                "playres_y": self.res_y_entry.get().strip() or "1080",
+                "theme_mode": self.theme_mode
             }
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
         except Exception:
             pass
         self.destroy()
+
+    def toggle_theme(self):
+        if self.theme_mode == "dark":
+            ctk.set_appearance_mode("light")
+            self.theme_mode = "light"
+            self.theme_btn.configure(text="🌙")
+        else:
+            ctk.set_appearance_mode("dark")
+            self.theme_mode = "dark"
+            self.theme_btn.configure(text="☀")
 
     def check_local_tools(self):
         if os.path.exists(self.ffmpeg_path) and os.path.exists(self.ffprobe_path):
