@@ -6,6 +6,7 @@ import logging
 import threading
 import tempfile
 import shutil
+import time
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 
@@ -169,6 +170,12 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             font=ctk.CTkFont(size=13, weight="bold"), text_color="#888884"
         )
         self.progress_label.pack(pady=(0, 10))
+
+        self.eta_label = ctk.CTkLabel(
+            action_frame, text="",
+            font=ctk.CTkFont(size=13, weight="bold"), text_color="#888884"
+        )
+        self.eta_label.pack(pady=(0, 10))
 
         def _open_last_output():
             if hasattr(self, 'last_output_dir') and os.path.exists(self.last_output_dir):
@@ -485,6 +492,7 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             self.cancel_btn.configure(state="disabled")
             self.status_badge.configure(text="STANDBY", text_color="#888884", fg_color="#242426")
             self.progress_label.configure(text="")
+            self.eta_label.configure(text="")
             if hasattr(self, 'last_output_dir') and self.last_output_dir:
                 self.open_output_btn.pack(fill="x", pady=(5, 0))
 
@@ -547,8 +555,11 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             total_episodes = len(video_files)
             processed_count = 0
             
+            self._batch_start_time = time.time()
+            
             def _init_progress(t=total_episodes):
                 self.progress_label.configure(text=f"Processing: 0 / {t}")
+                self.eta_label.configure(text="")
             self.after(0, _init_progress)
 
             for video in video_files:
@@ -644,8 +655,20 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
                                 pass
                 finally:
                     processed_count += 1
-                    def _update_progress(c=processed_count, t=total_episodes):
+                    
+                    elapsed = time.time() - self._batch_start_time
+                    avg_per_ep = elapsed / processed_count
+                    remaining = avg_per_ep * (total_episodes - processed_count)
+                    
+                    if processed_count == total_episodes:
+                        eta_text = "ETA: Done"
+                    else:
+                        m, s = divmod(int(remaining), 60)
+                        eta_text = f"ETA: {m}m {s}s"
+                        
+                    def _update_progress(c=processed_count, t=total_episodes, eta=eta_text):
                         self.progress_label.configure(text=f"Processing: {c} / {t}")
+                        self.eta_label.configure(text=eta)
                     self.after(0, _update_progress)
             
             self.log(f"--- COMPLETED BATCH: {os.path.basename(folder)} ---", "INFO")
