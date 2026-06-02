@@ -133,6 +133,18 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         )
         self.progress_label.pack(pady=(0, 10))
 
+        def _open_last_output():
+            if hasattr(self, 'last_output_dir') and os.path.exists(self.last_output_dir):
+                os.startfile(self.last_output_dir)
+
+        self.open_output_btn = ctk.CTkButton(
+            action_frame, text="📂 Open Output Folder", height=32,
+            font=ctk.CTkFont(size=12, weight="bold"), 
+            fg_color="#1A1A2E", hover_color="#16213E", text_color="#00E5FF",
+            command=_open_last_output
+        )
+        self.open_output_btn.pack_forget()
+
         self.log_box = ctk.CTkTextbox(action_frame, height=160, fg_color="#050505", text_color="#00E5FF", font=ctk.CTkFont(family="Consolas", size=11), border_color="#1A1A1A", border_width=1)
         self.log_box.pack(fill="x")
 
@@ -397,6 +409,8 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
         self.process_btn.configure(state="disabled", fg_color="#333333", text="PROCESSING IN PROGRESS...")
         self.add_folder_btn.configure(state="disabled")
         self.status_badge.configure(text="🟢 ACTIVE", text_color="#00CC66", fg_color="#003311")
+        if hasattr(self, 'open_output_btn'):
+            self.open_output_btn.pack_forget()
         threading.Thread(target=self.process_queue, daemon=True).start()
 
     def process_queue(self):
@@ -413,6 +427,7 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             self.log(f"--- STARTING BATCH: {os.path.basename(folder)} ---", "INFO")
             subs_folder = os.path.join(folder, "subs")
             output_dir = os.path.join(folder, "Phoenix_Output")
+            self.last_output_dir = output_dir
             os.makedirs(output_dir, exist_ok=True)
 
             video_files = [f for f in os.listdir(folder) if f.endswith(('.mkv', '.mp4'))]
@@ -569,6 +584,8 @@ class PhoenixSubsMuxerFixer(ctk.CTk):
             self.add_folder_btn.configure(state="normal")
             self.status_badge.configure(text="⚫ STANDBY", text_color="#AAAAAA", fg_color="#111111")
             self.progress_label.configure(text="")
+            if hasattr(self, 'last_output_dir') and self.last_output_dir:
+                self.open_output_btn.pack(fill="x", pady=(5, 0))
             
         self.after(0, _finalize_ui)
 
