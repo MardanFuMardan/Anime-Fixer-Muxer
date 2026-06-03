@@ -7,6 +7,7 @@ import threading
 import tempfile
 import shutil
 import time
+import tkinter as tk
 import customtkinter as ctk
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from tkinter import filedialog, messagebox
@@ -44,6 +45,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         self.is_processing = False
         self.cancel_requested = False
         self.theme_mode = "dark"
+        self.last_browse_dir = os.path.expanduser("~")
         
         self.setup_ui()
         self.load_settings()
@@ -325,24 +327,93 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             self.update_queue_ui()
             self.process_btn.configure(state="normal")
 
+    def pick_multiple_folders(self):
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Select Anime Folders")
+        dialog.geometry("600x500")
+        dialog.resizable(False, False)
+        dialog.configure(fg_color="#0A0A0B")
+        dialog.transient(self)
+
+        ctk.CTkLabel(dialog, text="// SELECT FOLDERS — Hold CTRL or SHIFT to select multiple", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#b4092c").pack(pady=(15, 10))
+
+        list_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        list_frame.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+
+        scrollbar = tk.Scrollbar(list_frame)
+        scrollbar.pack(side="right", fill="y")
+
+        folder_listbox = tk.Listbox(
+            list_frame, selectmode=tk.EXTENDED, bg="#06060a", fg="#c0c0c8",
+            selectbackground="#b4092c", selectforeground="#ffffff", font=("Consolas", 11),
+            borderwidth=0, highlightthickness=1, highlightcolor="#1e1e26", activestyle="none",
+            yscrollcommand=scrollbar.set
+        )
+        folder_listbox.pack(side="left", fill="both", expand=True)
+        scrollbar.config(command=folder_listbox.yview)
+
+        current_dirs = []
+
+        def populate_list():
+            folder_listbox.delete(0, tk.END)
+            current_dirs.clear()
+            if os.path.exists(self.last_browse_dir):
+                try:
+                    for d in sorted(os.listdir(self.last_browse_dir)):
+                        full_path = os.path.join(self.last_browse_dir, d)
+                        if os.path.isdir(full_path):
+                            current_dirs.append(full_path)
+                            folder_listbox.insert(tk.END, f"  {d}")
+                except Exception:
+                    pass
+
+        populate_list()
+
+        selected_paths = []
+
+        def browse_root():
+            chosen = filedialog.askdirectory(title="Select Root Directory", initialdir=self.last_browse_dir)
+            if chosen:
+                self.last_browse_dir = chosen
+                populate_list()
+
+        def confirm():
+            indices = folder_listbox.curselection()
+            for idx in indices:
+                selected_paths.append(current_dirs[idx])
+            dialog.destroy()
+
+        def cancel():
+            dialog.destroy()
+
+        btn_row = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_row.pack(fill="x", padx=20, pady=(0, 20))
+
+        ctk.CTkButton(btn_row, text="[ BROWSE LOCATION ]", font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#1a1a1e", text_color="#c0c0c8", border_width=1, border_color="#2a2a2e", corner_radius=4, command=browse_root).pack(side="left")
+        ctk.CTkButton(btn_row, text="[ CANCEL ]", width=100, font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#1a1a1e", text_color="#c0c0c8", border_width=1, border_color="#2a2a2e", corner_radius=4, command=cancel).pack(side="right")
+        ctk.CTkButton(btn_row, text="[ CONFIRM ]", width=100, font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#1a1a1e", text_color="#c0c0c8", border_width=1, border_color="#2a2a2e", corner_radius=4, command=confirm).pack(side="right", padx=(0, 10))
+
+        dialog.grab_set()
+        self.wait_window(dialog)
+        return selected_paths
+
     def add_folder_to_queue(self):
         if not self.tools_ready:
             self.log("Cannot add folders. Tools are missing.", "WARNING")
             return
             
+        folders = self.pick_multiple_folders()
+        if not folders:
+            return
+            
         added_any = False
-        while True:
-            folder = filedialog.askdirectory(title="Select Anime Root Folder")
-            if not folder:
-                break
-                
+        for folder in folders:
             if folder in self.folder_queue:
                 self.log(f"Folder already in queue: {os.path.basename(folder)}", "WARNING")
             else:
                 subs_path = os.path.join(folder, "subs")
                 if not os.path.exists(subs_path):
                     self.log(f"Rejected {os.path.basename(folder)}: Missing 'subs' directory.", "ERROR")
-                    messagebox.showerror("Structure Error", f"The folder '{os.path.basename(folder)}' does not contain a 'subs' subdirectory.")
                 else:
                     self.folder_queue.append(folder)
                     self.log(f"Added to queue: {folder}")
@@ -357,9 +428,6 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                         
                     added_any = True
             
-            if not messagebox.askyesno("Add Another?", "Would you like to add another folder?"):
-                break
-
         if added_any:
             self.update_queue_ui()
             self.process_btn.configure(state="normal", fg_color="#b4092c", text_color="#ffffff", border_width=0)
