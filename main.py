@@ -661,19 +661,31 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
     def extract_episode_number(self, filename):
         name = os.path.splitext(filename)[0]
         name = re.sub(r'\b(1080p|720p|2160p|4k|x265|x264|10bit|HEVC|BluRay|WEBRip|HDR)\b', '', name, flags=re.IGNORECASE)
+        
+        # Pre-clean: strip standalone years (18xx, 19xx, 20xx) that are NOT episode numbers
+        name = re.sub(r'(?i)(?<!\be)(?<!\bep)(?<!\bepisode)(?<!\be )(?<!\bep )(?<!\bepisode )\b(?:18|19|20)\d{2}\b', '', name)
+
         if hasattr(self, 'pattern_entry'):
             custom = self.pattern_entry.get().strip()
             if custom:
                 try:
-                    m = re.search(custom, name, re.IGNORECASE)
-                    if m and m.lastindex and m.lastindex >= 1: return str(int(m.group(1)))
+                    matches = list(re.finditer(custom, name, re.IGNORECASE))
+                    valid = [m for m in matches if m.lastindex and m.lastindex >= 1]
+                    if valid: return str(int(valid[-1].group(1)))
                 except re.error: pass
+
+        # Priority 1: Explicit episode markers
         match = re.search(r'\b(?:E|EP|Episode)\s*0*(\d{1,4})\b', name, re.IGNORECASE)
         if match: return str(int(match.group(1)))
-        match = re.search(r'(?<!\d)-\s*0*(\d{1,4})(?!\d)', name)
-        if match: return str(int(match.group(1)))
+
+        # Priority 2: "- 01" fansub pattern (take the LAST match)
+        matches = re.findall(r'(?<!\d)-\s*0*(\d{1,4})(?!\d)', name)
+        if matches: return str(int(matches[-1]))
+
+        # Priority 3: Bracketed number at end
         match = re.search(r'\[0*(\d{1,4})\]\s*$', name)
         if match: return str(int(match.group(1)))
+
         return None
 
     def get_best_audio_stream(self, video_path):
