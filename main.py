@@ -26,6 +26,12 @@ logger.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
 class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
+    def safe_after(self, ms, func):
+        try:
+            self.after(ms, func)
+        except Exception:
+            pass
+
     def __init__(self):
         super().__init__()
 
@@ -327,7 +333,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             self.update_queue_ui()
             self.process_btn.configure(state="normal")
 
-    def pick_multiple_folders(self):
+    def pick_multiple_folders(self, callback=None):
         dialog = ctk.CTkToplevel(self)
         dialog.title("Select Anime Folders")
         dialog.geometry("600x500")
@@ -369,8 +375,6 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         populate_list()
 
-        selected_paths = []
-
         def browse_root():
             chosen = filedialog.askdirectory(title="Select Root Directory", initialdir=self.last_browse_dir)
             if chosen:
@@ -379,12 +383,15 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         def confirm():
             indices = folder_listbox.curselection()
-            for idx in indices:
-                selected_paths.append(current_dirs[idx])
+            paths = [current_dirs[idx] for idx in indices]
             dialog.destroy()
+            if callback:
+                callback(paths)
 
         def cancel():
             dialog.destroy()
+            if callback:
+                callback([])
 
         btn_row = ctk.CTkFrame(dialog, fg_color="transparent")
         btn_row.pack(fill="x", padx=20, pady=(0, 20))
@@ -393,19 +400,15 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         ctk.CTkButton(btn_row, text="[ CANCEL ]", width=100, font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#1a1a1e", text_color="#c0c0c8", border_width=1, border_color="#2a2a2e", corner_radius=4, command=cancel).pack(side="right")
         ctk.CTkButton(btn_row, text="[ CONFIRM ]", width=100, font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#1a1a1e", text_color="#c0c0c8", border_width=1, border_color="#2a2a2e", corner_radius=4, command=confirm).pack(side="right", padx=(0, 10))
 
-        dialog.grab_set()
-        self.wait_window(dialog)
-        return selected_paths
-
     def add_folder_to_queue(self):
         if not self.tools_ready:
             self.log("Cannot add folders. Tools are missing.", "WARNING")
             return
-            
-        folders = self.pick_multiple_folders()
+        self.pick_multiple_folders(callback=self._on_folders_selected)
+
+    def _on_folders_selected(self, folders):
         if not folders:
             return
-            
         added_any = False
         for folder in folders:
             if folder in self.folder_queue:
@@ -417,17 +420,13 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                 else:
                     self.folder_queue.append(folder)
                     self.log(f"Added to queue: {folder}")
-                    
                     vid_count = len([f for f in os.listdir(folder) if f.endswith(('.mkv', '.mp4'))])
                     sub_count = len([f for f in os.listdir(subs_path) if f.endswith('.ass')])
                     folder_name = os.path.basename(folder)
-                    
                     self.log(f"Preview: Found {vid_count} video(s) and {sub_count} subtitle(s) in '{folder_name}'")
                     if vid_count != sub_count:
                         self.log(f"WARNING: Video/subtitle count mismatch — {vid_count} videos vs {sub_count} subtitles", "WARNING")
-                        
                     added_any = True
-            
         if added_any:
             self.update_queue_ui()
             self.process_btn.configure(state="normal", fg_color="#b4092c", text_color="#ffffff", border_width=0)
@@ -472,12 +471,30 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         self.process_btn.configure(state="disabled", fg_color="#0e0e12", text_color="#2a2a2e", border_width=1, border_color="#1e1e26")
 
     def extract_episode_number(self, filename):
-        clean_name = re.sub(r'1080p|720p|2160p|4k|x265|x264|10bit', '', filename, flags=re.IGNORECASE)
-        match = re.search(r'(?:E|EP|Episode|- |v)\s*0*(\d+)', clean_name, re.IGNORECASE)
+        name = os.path.splitext(filename)[0]
+        # Strip known quality/codec tags to avoid false matches
+        name = re.sub(
+            r'\b(1080p|720p|2160p|4k|x265|x264|10bit|HEVC|BluRay|WEBRip|HDR)\b',
+            '', name, flags=re.IGNORECASE
+        )
+
+        # Priority 1: Explicit episode markers — E01, EP01, Episode 01
+        match = re.search(r'\b(?:E|EP|Episode)\s*0*(\d{1,4})\b', name, re.IGNORECASE)
         if match:
-            return match.group(1)
-        numbers = re.findall(r'\d+', clean_name)
-        return numbers[-1] if numbers else None
+            return str(int(match.group(1)))  # normalize: remove leading zeros
+
+        # Priority 2: "- 01" pattern common in fansub naming (not preceded by digit)
+        match = re.search(r'(?<!\d)-\s*0*(\d{1,4})(?!\d)', name)
+        if match:
+            return str(int(match.group(1)))
+
+        # Priority 3: Bracketed episode number at end of name e.g. [01]
+        match = re.search(r'\[0*(\d{1,4})\]\s*$', name)
+        if match:
+            return str(int(match.group(1)))
+
+        # NO blind fallback — avoids grabbing numbers from title (e.g. "9004-tai")
+        return None
 
     def get_best_audio_stream(self, video_path):
         cmd = [self.ffprobe_path, '-v', 'error', '-show_entries', 'stream=index,codec_type,channels:stream_tags=language', '-of', 'json', video_path]
@@ -631,6 +648,51 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             self.log(f"Subtitle sanitation failed for {os.path.basename(filepath)}: {e}", "ERROR")
             return None
 
+    def normalize_ep(self, ep_str):
+        """Normalize episode string: strip leading zeros for fair comparison."""
+        try:
+            return str(int(ep_str))
+        except (ValueError, TypeError):
+            return ep_str
+
+    def find_matching_sub(self, vid_ep, sub_files):
+        """
+        Two-pass subtitle matcher.
+        Pass 1: exact normalized episode number match.
+        Pass 2: zero-padding tolerant integer match.
+        Returns matched filename string or None.
+        """
+        norm_vid = self.normalize_ep(vid_ep)
+
+        # Pass 1: exact match after normalization
+        exact = [s for s in sub_files if self.normalize_ep(self.extract_episode_number(s)) == norm_vid]
+        if len(exact) == 1:
+            return exact[0]
+        if len(exact) > 1:
+            self.log(f"Multiple subtitle matches for episode {vid_ep}, using first: {exact[0]}", "WARNING")
+            return exact[0]
+
+        # Pass 2: integer comparison (handles "1" vs "01" edge cases)
+        try:
+            vid_ep_int = int(norm_vid)
+            int_matches = []
+            for s in sub_files:
+                ep = self.extract_episode_number(s)
+                try:
+                    if int(ep) == vid_ep_int:
+                        int_matches.append(s)
+                except (ValueError, TypeError):
+                    pass
+            if len(int_matches) == 1:
+                return int_matches[0]
+            if len(int_matches) > 1:
+                self.log(f"Multiple integer matches for episode {vid_ep}, using first: {int_matches[0]}", "WARNING")
+                return int_matches[0]
+        except (ValueError, TypeError):
+            pass
+
+        return None
+
     def start_processing_thread(self):
         if not self.folder_queue: return
         self.is_processing = True
@@ -661,8 +723,8 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         if not (res_x and res_y and res_x.isdigit() and res_y.isdigit()):
             def _show_err():
                 messagebox.showerror("Validation Error", "Invalid resolution values. PlayResX and PlayResY must be positive integers.")
-            self.after(0, _show_err)
-            self.after(0, _finalize_ui)
+            self.safe_after(0, _show_err)
+            self.safe_after(0, _finalize_ui)
             return
 
         count_attempted = 0
@@ -695,7 +757,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                     if f in self.folder_queue:
                         self.folder_queue.remove(f)
                         self.update_queue_ui()
-                self.after(0, _remove_skipped)
+                self.safe_after(0, _remove_skipped)
                 continue
             
             def sort_key(f):
@@ -719,7 +781,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             def _init_progress(t=total_episodes):
                 self.progress_label.configure(text=f"Processing: 0 / {t}")
                 self.eta_label.configure(text="")
-            self.after(0, _init_progress)
+            self.safe_after(0, _init_progress)
 
             for video in video_files:
                 try:
@@ -741,7 +803,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                         
                     count_attempted += 1
 
-                    matched_sub = next((s for s in sub_files if self.extract_episode_number(s) == vid_ep), None)
+                    matched_sub = self.find_matching_sub(vid_ep, sub_files)
                     if not matched_sub:
                         self.log(f"Skipping Ep {vid_ep}: No matching subtitle found in 'subs' folder.", "ERROR")
                         count_no_sub += 1
@@ -790,17 +852,40 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                         
                     ffmpeg_cmd.append(out_path)
 
+                    ffmpeg_error_output = ""
                     try:
-                        subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, text=True)
-                        self.log(f"SUCCESS: Ep {vid_ep} completed.")
-                        count_succeeded += 1
-                    except subprocess.CalledProcessError as e:
-                        self.log(f"FFmpeg muxing failed for Ep {vid_ep}.", "ERROR")
+                        proc = subprocess.Popen(
+                            ffmpeg_cmd,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.PIPE,
+                            text=True
+                        )
+                        # Poll so we can honour cancel_requested mid-encode
+                        while proc.poll() is None:
+                            if self.cancel_requested:
+                                proc.terminate()
+                                self.log(f"FFmpeg process terminated by user for Ep {vid_ep}.", "WARNING")
+                                break
+                            time.sleep(0.5)
+
+                        _, stderr_output = proc.communicate(timeout=10)
+                        ffmpeg_error_output = stderr_output or ""
+
+                        if self.cancel_requested:
+                            pass  # handled above
+                        elif proc.returncode != 0:
+                            self.log(f"FFmpeg muxing failed for Ep {vid_ep}.", "ERROR")
+                            count_ffmpeg_err += 1
+                            if ffmpeg_error_output:
+                                last_lines = "\n".join(ffmpeg_error_output.strip().split('\n')[-5:])
+                                self.log(f"FFmpeg Error Details:\n{last_lines}", "ERROR")
+                        else:
+                            self.log(f"SUCCESS: Ep {vid_ep} completed.")
+                            count_succeeded += 1
+
+                    except Exception as e:
+                        self.log(f"Unexpected error during FFmpeg for Ep {vid_ep}: {e}", "ERROR")
                         count_ffmpeg_err += 1
-                        if e.stderr:
-                            lines = e.stderr.strip().split('\n')
-                            last_lines = "\n".join(lines[-5:])
-                            self.log(f"FFmpeg Error Details:\n{last_lines}", "ERROR")
                     finally:
                         if os.path.exists(temp_sub_path):
                             try:
@@ -828,7 +913,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                     def _update_progress(c=processed_count, t=total_episodes, eta=eta_text):
                         self.progress_label.configure(text=f"// PROCESSING: {c} / {t}")
                         self.eta_label.configure(text=eta)
-                    self.after(0, _update_progress)
+                    self.safe_after(0, _update_progress)
             
             self.log(f"--- COMPLETED BATCH: {os.path.basename(folder)} ---", "INFO")
             
@@ -837,7 +922,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                     self.folder_queue.remove(f)
                     self.update_queue_ui()
                     
-            self.after(0, _remove_folder_and_update)
+            self.safe_after(0, _remove_folder_and_update)
 
         self.log("ALL QUEUES PROCESSED SUCCESSFULLY.", "INFO")
         
@@ -852,7 +937,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         )
         self.log(summary_msg, "INFO")
         
-        self.after(0, _finalize_ui)
+        self.safe_after(0, _finalize_ui)
 
 if __name__ == "__main__":
     app = PhoenixSubsMuxerFixer()
