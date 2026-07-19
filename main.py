@@ -156,7 +156,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         v_sep = ctk.CTkFrame(res_inner, width=1, fg_color="#131320")
         v_sep.grid(row=0, column=5, sticky="ns", padx=(0, 15))
 
-        ctk.CTkLabel(res_inner, text="PATTERN:", font=ctk.CTkFont(family="Consolas", size=12), text_color="#888890").grid(row=0, column=6, padx=(0, 8))
+        ctk.CTkLabel(res_inner, text="RAW REGEX (advanced):", font=ctk.CTkFont(family="Consolas", size=12), text_color="#888890").grid(row=0, column=6, padx=(0, 8))
         
         pattern_frame = ctk.CTkFrame(res_inner, fg_color="transparent")
         pattern_frame.grid(row=0, column=7, sticky="w")
@@ -193,6 +193,24 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         
         queue_buttons = ctk.CTkFrame(queue_header, fg_color="transparent")
         queue_buttons.pack(side="right")
+
+        ctk.CTkLabel(queue_buttons, text="TEMPLATE ({ep_number} placeholder):", font=ctk.CTkFont(family="Consolas", size=11, weight="bold"), text_color="#00d4ff").pack(side="left", padx=(0, 8))
+
+        template_frame = ctk.CTkFrame(queue_buttons, fg_color="transparent")
+        template_frame.pack(side="left", padx=(0, 15))
+
+        self.ep_template_entry = ctk.CTkEntry(
+            template_frame, width=220, justify="left", 
+            font=ctk.CTkFont(family="Consolas", size=11), fg_color="#06060a", 
+            border_color="#00d4ff", border_width=1, text_color="#e0e0e0", 
+            corner_radius=4, placeholder_text="e.g. _-_{ep_number}  or  E{ep_number}"
+        )
+        self.ep_template_entry.pack(anchor="w")
+
+        ctk.CTkLabel(
+            template_frame, text="Use {ep_number} as placeholder — last match wins", 
+            font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e"
+        ).pack(anchor="w", pady=(2, 0))
 
         self.preview_btn = ctk.CTkButton(
             queue_buttons, text="◈ PREVIEW MATCHES", height=28,
@@ -403,6 +421,10 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                     if hasattr(self, 'pattern_entry'):
                         self.pattern_entry.delete(0, 'end')
                         self.pattern_entry.insert(0, data["custom_pattern"])
+                if "ep_template" in data:
+                    if hasattr(self, 'ep_template_entry'):
+                        self.ep_template_entry.delete(0, 'end')
+                        self.ep_template_entry.insert(0, data["ep_template"])
                 if "theme_mode" in data:
                     self.theme_mode = data["theme_mode"]
                     ctk.set_appearance_mode(self.theme_mode)
@@ -420,6 +442,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                 "playres_y": self.res_y_entry.get().strip() or "1080",
                 "theme_mode": self.theme_mode,
                 "custom_pattern": self.pattern_entry.get().strip() if hasattr(self, 'pattern_entry') else "",
+                "ep_template": self.ep_template_entry.get().strip() if hasattr(self, 'ep_template_entry') else "",
             }
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
@@ -658,12 +681,33 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
     # =======================================================
     # CORE LOGIC (REGEX & PARSING)
     # =======================================================
+    def apply_template_pattern(self, template, name):
+        if '{ep_number}' not in template:
+            return None
+        parts = template.split('{ep_number}')
+        if len(parts) != 2:
+            return None  # only one {ep_number} placeholder allowed
+        prefix_literal, suffix_literal = parts
+        pattern = re.escape(prefix_literal) + r'0*(\d{1,4})' + re.escape(suffix_literal)
+        matches = re.findall(pattern, name, re.IGNORECASE)
+        if matches:
+            return str(int(matches[-1]))  # always prefer the LAST match
+        return None
+
     def extract_episode_number(self, filename):
         name = os.path.splitext(filename)[0]
         name = re.sub(r'\b(1080p|720p|2160p|4k|x265|x264|10bit|HEVC|BluRay|WEBRip|HDR)\b', '', name, flags=re.IGNORECASE)
         
         # Pre-clean: strip standalone years (18xx, 19xx, 20xx) that are NOT episode numbers
         name = re.sub(r'(?i)(?<!\be)(?<!\bep)(?<!\bepisode)(?<!\be )(?<!\bep )(?<!\bepisode )\b(?:18|19|20)\d{2}\b', '', name)
+
+        # Priority 0: user-defined template pattern
+        if hasattr(self, 'ep_template_entry'):
+            template = self.ep_template_entry.get().strip()
+            if template and '{ep_number}' in template:
+                result = self.apply_template_pattern(template, name)
+                if result:
+                    return result
 
         if hasattr(self, 'pattern_entry'):
             custom = self.pattern_entry.get().strip()
