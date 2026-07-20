@@ -892,7 +892,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         preview = ctk.CTkToplevel(self)
         preview.title("Preview — Video ↔ Subtitle Matches")
-        preview.geometry("860x560")
+        preview.geometry("1100x560")
         preview.configure(fg_color="#050508")
         preview.transient(self)
 
@@ -904,8 +904,11 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         header_row = ctk.CTkFrame(scroll, fg_color="#0a0a18", corner_radius=0)
         header_row.pack(fill="x", pady=(0, 2))
-        for col_text, col_width in [("#", 40), ("FOLDER", 160), ("VIDEO FILE", 220), ("SUBTITLE FILE", 220), ("STATUS", 100)]:
+        for col_text, col_width in [("#", 40), ("FOLDER", 160), ("EP", 40), ("VIDEO FILE", 320), ("SUBTITLE FILE", 320), ("STATUS", 100)]:
             ctk.CTkLabel(header_row, text=col_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff", anchor="w").pack(side="left", padx=4, pady=4)
+
+        def trunc(s, max_len=40):
+            return s if len(s) <= max_len else s[:max_len-15] + "..." + s[-12:]
 
         row_num = 0
         for folder in self.folder_queue:
@@ -926,7 +929,14 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                 data_row = ctk.CTkFrame(scroll, fg_color=row_bg, corner_radius=0)
                 data_row.pack(fill="x", pady=1)
 
-                for cell_text, col_width, color in [(str(row_num), 40, "#3a3a5e"), (folder_name[:22], 160, "#8080a0"), (video[:28], 220, "#c0c0d0"), ((matched_sub or "—")[:28], 220, "#8080a0"), (status, 100, status_color)]:
+                for cell_text, col_width, color in [
+                    (str(row_num), 40, "#3a3a5e"), 
+                    (trunc(folder_name, 20), 160, "#8080a0"), 
+                    (str(vid_ep or "—"), 40, "#00d4ff"),
+                    (trunc(video, 45), 320, "#c0c0d0"), 
+                    (trunc(matched_sub or "—", 45), 320, "#8080a0"), 
+                    (status, 100, status_color)
+                ]:
                     ctk.CTkLabel(data_row, text=cell_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10), text_color=color, anchor="w").pack(side="left", padx=4, pady=3)
 
         ctk.CTkButton(preview, text="[ CLOSE ]", height=32, corner_radius=4, font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#0a0a14", text_color="#c0092e", border_width=1, border_color="#2a0810", command=preview.destroy).pack(pady=(0, 15))
