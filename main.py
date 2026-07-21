@@ -1127,18 +1127,51 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                     ffmpeg_cmd.append(out_path)
 
                     try:
-                        proc = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
-                        while proc.poll() is None:
-                            if self.cancel_requested:
-                                proc.terminate()
-                                break
-                            time.sleep(0.5)
+                        import tempfile
+                        stderr_log_fd, stderr_log_path = tempfile.mkstemp(suffix=".log")
+                        os.close(stderr_log_fd)
 
-                        _, stderr_out = proc.communicate(timeout=10)
-                        if self.cancel_requested: pass
+                        with open(stderr_log_path, "w", encoding="utf-8") as stderr_file:
+                            proc = subprocess.Popen(
+                                ffmpeg_cmd,
+                                stdout=subprocess.DEVNULL,
+                                stderr=stderr_file,
+                                text=True
+                            )
+                            while proc.poll() is None:
+                                if self.cancel_requested:
+                                    proc.terminate()
+                                    self.log(f"FFmpeg terminated by user for Ep {vid_ep}.", "WARNING")
+                                    break
+                                time.sleep(0.5)
+
+                            try:
+                                proc.wait(timeout=3600)
+                            except subprocess.TimeoutExpired:
+                                proc.terminate()
+                                self.log(f"FFmpeg timed out after 1 hour for Ep {vid_ep} — process killed.", "ERROR")
+                                with ep_lock: count_ffmpeg_err += 1
+
+                        ffmpeg_error_output = ""
+                        try:
+                            with open(stderr_log_path, "r", encoding="utf-8", errors="ignore") as f:
+                                ffmpeg_error_output = f.read()
+                        except Exception:
+                            pass
+                        finally:
+                            try:
+                                os.remove(stderr_log_path)
+                            except OSError:
+                                pass
+
+                        if self.cancel_requested:
+                            pass
                         elif proc.returncode != 0:
                             self.log(f"FFmpeg failed for Ep {vid_ep}.", "ERROR")
                             with ep_lock: count_ffmpeg_err += 1
+                            if ffmpeg_error_output:
+                                last_lines = "\n".join(ffmpeg_error_output.strip().split('\n')[-5:])
+                                self.log(f"FFmpeg Error:\n{last_lines}", "ERROR")
                         else:
                             self.verify_output_integrity(out_path, vid_ep)
                             self.log(f"SUCCESS: Ep {vid_ep} completed.", "SUCCESS")
