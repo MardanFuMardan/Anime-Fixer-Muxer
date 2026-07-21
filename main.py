@@ -1007,12 +1007,18 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             for col_text, col_width in [("#", 40), ("FOLDER", 160), ("EP", 40), ("VIDEO FILE", 320), ("SUBTITLE FILE", 320), ("STATUS", 100)]:
                 ctk.CTkLabel(header_row, text=col_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff", anchor="w").pack(side="left", padx=4, pady=4)
 
-            row_num = 0
+            rows_rendered = 0
+            skipped_folders = []
+
             for folder in self.folder_queue:
                 subs_folder = os.path.join(folder, "subs")
                 subs_exists = os.path.exists(subs_folder)
                 self.log(f"[DEBUG] Preview: checking folder {folder}, subs exists: {subs_exists}", "DEBUG")
+                
                 if not subs_exists:
+                    reason = "Missing 'subs' folder"
+                    self.log(f"Preview: Skipping '{os.path.basename(folder)}' — {reason}", "WARNING")
+                    skipped_folders.append((os.path.basename(folder), reason))
                     continue
 
                 try:
@@ -1020,6 +1026,12 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                 except Exception as e:
                     self.log(f"[ERROR] Failed reading video files for folder {folder}: {e}", "ERROR")
                     video_files = []
+
+                if not video_files:
+                    reason = "No .mkv/.mp4 video files found"
+                    self.log(f"Preview: Skipping '{os.path.basename(folder)}' — {reason}", "WARNING")
+                    skipped_folders.append((os.path.basename(folder), reason))
+                    continue
 
                 try:
                     sub_files = [f for f in os.listdir(subs_folder) if f.endswith('.ass')]
@@ -1032,18 +1044,18 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
                 for video in video_files:
                     try:
-                        row_num += 1
+                        rows_rendered += 1
                         vid_ep = self.extract_episode_number(video)
                         matched_sub = self.find_matching_sub(vid_ep, sub_files) if vid_ep else None
                         status = "✔ MATCHED" if matched_sub else "✘ NO SUB"
                         status_color = "#00a050" if matched_sub else "#c0092e"
-                        row_bg = "#080810" if row_num % 2 == 0 else "#050508"
+                        row_bg = "#080810" if rows_rendered % 2 == 0 else "#050508"
 
                         data_row = ctk.CTkFrame(scroll, fg_color=row_bg, corner_radius=0)
                         data_row.pack(fill="x", pady=1)
 
                         for cell_text, col_width, color in [
-                            (str(row_num), 40, "#3a3a5e"), 
+                            (str(rows_rendered), 40, "#3a3a5e"), 
                             (self.smart_truncate(folder_name, 25), 160, "#8080a0"), 
                             (str(vid_ep or "—"), 40, "#00d4ff"),
                             (self.smart_truncate(video, 45), 320, "#c0c0d0"), 
@@ -1054,6 +1066,31 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                     except Exception as e:
                         self.log(f"[ERROR] Preview row failed for video '{video}': {e}", "ERROR")
                         continue
+
+            if rows_rendered == 0:
+                empty_msg = ctk.CTkLabel(
+                    scroll,
+                    text="⚠ No files could be matched or found.\n\nPossible reasons:",
+                    font=ctk.CTkFont(family="Consolas", size=13, weight="bold"),
+                    text_color="#c08000", justify="left"
+                )
+                empty_msg.pack(pady=(30, 10), padx=20, anchor="w")
+
+                if skipped_folders:
+                    for folder_name, reason in skipped_folders:
+                        ctk.CTkLabel(
+                            scroll,
+                            text=f"  • {folder_name}: {reason}",
+                            font=ctk.CTkFont(family="Consolas", size=11),
+                            text_color="#8080a0", justify="left"
+                        ).pack(pady=2, padx=30, anchor="w")
+                else:
+                    ctk.CTkLabel(
+                        scroll,
+                        text="  • No folders in queue, or all folders were valid but produced zero rows unexpectedly.\n  • Check the System Log for [DEBUG]/[ERROR] messages.",
+                        font=ctk.CTkFont(family="Consolas", size=11),
+                        text_color="#8080a0", justify="left"
+                    ).pack(pady=2, padx=30, anchor="w")
 
             ctk.CTkButton(preview, text="[ CLOSE ]", height=32, corner_radius=4, font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#0a0a14", text_color="#c0092e", border_width=1, border_color="#2a0810", command=preview.destroy).pack(pady=(0, 15))
         except Exception as e:
