@@ -153,18 +153,77 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         self.res_y_entry.insert(0, "1080")
         self.res_y_entry.grid(row=0, column=4, padx=(0, 15))
 
-        v_sep = ctk.CTkFrame(res_inner, width=1, fg_color="#131320")
-        v_sep.grid(row=0, column=5, sticky="ns", padx=(0, 15))
+        # --- EPISODE DETECTION CARD ---
+        ep_detection_frame = ctk.CTkFrame(main_frame, fg_color="#080810", corner_radius=8, border_width=1, border_color="#131320")
+        ep_detection_frame.pack(fill="x", ipadx=15, ipady=10, pady=(0, 10))
 
-        ctk.CTkLabel(res_inner, text="RAW REGEX (advanced):", font=ctk.CTkFont(family="Consolas", size=12), text_color="#888890").grid(row=0, column=6, padx=(0, 8))
-        
-        pattern_frame = ctk.CTkFrame(res_inner, fg_color="transparent")
-        pattern_frame.grid(row=0, column=7, sticky="w")
-        
-        self.pattern_entry = ctk.CTkEntry(pattern_frame, width=260, justify="left", font=ctk.CTkFont(family="Consolas", size=11), fg_color="#06060a", border_color="#00d4ff", border_width=1, text_color="#e0e0e0", corner_radius=4, placeholder_text="Custom regex e.g.: (?:EP?)(\d{1,4})")
-        self.pattern_entry.pack(anchor="w")
-        
-        ctk.CTkLabel(pattern_frame, text="Custom episode regex — group 1 must capture the number", font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e").pack(anchor="w", pady=(2, 0))
+        ep_header = ctk.CTkFrame(ep_detection_frame, fg_color="transparent")
+        ep_header.pack(fill="x", pady=(0, 8))
+
+        ctk.CTkLabel(
+            ep_header, text="⟨ EPISODE DETECTION ⟩", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff"
+        ).pack(side="left")
+
+        self.ep_pattern_mode = ctk.StringVar(value="template")
+
+        mode_btn_frame = ctk.CTkFrame(ep_header, fg_color="transparent")
+        mode_btn_frame.pack(side="right")
+
+        self.mode_template_btn = ctk.CTkButton(
+            mode_btn_frame, text="TEMPLATE MODE", height=24, width=120,
+            font=ctk.CTkFont(family="Consolas", size=10, weight="bold"),
+            fg_color="#1a1a2e", hover_color="#1a1a2e", text_color="#00d4ff",
+            border_width=1, border_color="#00d4ff", corner_radius=4,
+            command=lambda: self.set_ep_pattern_mode("template")
+        )
+        self.mode_template_btn.pack(side="left", padx=(0, 5))
+
+        self.mode_regex_btn = ctk.CTkButton(
+            mode_btn_frame, text="RAW REGEX MODE", height=24, width=130,
+            font=ctk.CTkFont(family="Consolas", size=10, weight="bold"),
+            fg_color="#050508", hover_color="#0a0a14", text_color="#8080a0",
+            border_width=1, border_color="#131320", corner_radius=4,
+            command=lambda: self.set_ep_pattern_mode("regex")
+        )
+        self.mode_regex_btn.pack(side="left")
+
+        ep_inputs_container = ctk.CTkFrame(ep_detection_frame, fg_color="transparent")
+        ep_inputs_container.pack(fill="x")
+
+        # TEMPLATE MODE INPUT
+        self.template_input_frame = ctk.CTkFrame(ep_inputs_container, fg_color="transparent")
+        self.template_input_frame.pack(fill="x")
+
+        self.ep_template_entry = ctk.CTkEntry(
+            self.template_input_frame, width=500, justify="left",
+            font=ctk.CTkFont(family="Consolas", size=11), fg_color="#06060a",
+            border_color="#00d4ff", border_width=1, text_color="#e0e0e0",
+            corner_radius=4, placeholder_text="e.g. _-_{ep_number}   or   E{ep_number}"
+        )
+        self.ep_template_entry.pack(anchor="w")
+
+        ctk.CTkLabel(
+            self.template_input_frame,
+            text="Use {ep_number} as placeholder. If the pattern appears multiple times, the LAST match is used.",
+            font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e"
+        ).pack(anchor="w", pady=(2, 0))
+
+        # RAW REGEX MODE INPUT
+        self.regex_input_frame = ctk.CTkFrame(ep_inputs_container, fg_color="transparent")
+
+        self.ep_regex_entry = ctk.CTkEntry(
+            self.regex_input_frame, width=500, justify="left",
+            font=ctk.CTkFont(family="Consolas", size=11), fg_color="#06060a",
+            border_color="#00d4ff", border_width=1, text_color="#e0e0e0",
+            corner_radius=4, placeholder_text=r"e.g. (?:EP?)(\d{1,4})"
+        )
+        self.ep_regex_entry.pack(anchor="w")
+
+        ctk.CTkLabel(
+            self.regex_input_frame,
+            text="Advanced: write raw regex. Group 1 must capture the episode number.",
+            font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e"
+        ).pack(anchor="w", pady=(2, 0))
 
 
         # --- TABS CONTAINER ---
@@ -193,24 +252,6 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         
         queue_buttons = ctk.CTkFrame(queue_header, fg_color="transparent")
         queue_buttons.pack(side="right")
-
-        ctk.CTkLabel(queue_buttons, text="TEMPLATE ({ep_number} placeholder):", font=ctk.CTkFont(family="Consolas", size=11, weight="bold"), text_color="#00d4ff").pack(side="left", padx=(0, 8))
-
-        template_frame = ctk.CTkFrame(queue_buttons, fg_color="transparent")
-        template_frame.pack(side="left", padx=(0, 15))
-
-        self.ep_template_entry = ctk.CTkEntry(
-            template_frame, width=220, justify="left", 
-            font=ctk.CTkFont(family="Consolas", size=11), fg_color="#06060a", 
-            border_color="#00d4ff", border_width=1, text_color="#e0e0e0", 
-            corner_radius=4, placeholder_text="e.g. _-_{ep_number}  or  E{ep_number}"
-        )
-        self.ep_template_entry.pack(anchor="w")
-
-        ctk.CTkLabel(
-            template_frame, text="Use {ep_number} as placeholder — last match wins", 
-            font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e"
-        ).pack(anchor="w", pady=(2, 0))
 
         self.preview_btn = ctk.CTkButton(
             queue_buttons, text="◈ PREVIEW MATCHES", height=28,
@@ -404,6 +445,20 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         else:
             logger.info(message)
 
+    def set_ep_pattern_mode(self, mode):
+        if hasattr(self, 'ep_pattern_mode'):
+            self.ep_pattern_mode.set(mode)
+        if mode == "template":
+            if hasattr(self, 'regex_input_frame'): self.regex_input_frame.pack_forget()
+            if hasattr(self, 'template_input_frame'): self.template_input_frame.pack(fill="x")
+            if hasattr(self, 'mode_template_btn'): self.mode_template_btn.configure(fg_color="#1a1a2e", text_color="#00d4ff", border_color="#00d4ff")
+            if hasattr(self, 'mode_regex_btn'): self.mode_regex_btn.configure(fg_color="#050508", text_color="#8080a0", border_color="#131320")
+        else:
+            if hasattr(self, 'template_input_frame'): self.template_input_frame.pack_forget()
+            if hasattr(self, 'regex_input_frame'): self.regex_input_frame.pack(fill="x")
+            if hasattr(self, 'mode_regex_btn'): self.mode_regex_btn.configure(fg_color="#1a1a2e", text_color="#00d4ff", border_color="#00d4ff")
+            if hasattr(self, 'mode_template_btn'): self.mode_template_btn.configure(fg_color="#050508", text_color="#8080a0", border_color="#131320")
+
     def load_settings(self):
         config_path = os.path.join(self.base_dir, "config.json")
         try:
@@ -417,14 +472,21 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                 if "playres_y" in data:
                     self.res_y_entry.delete(0, 'end')
                     self.res_y_entry.insert(0, str(data["playres_y"]))
-                if "custom_pattern" in data:
-                    if hasattr(self, 'pattern_entry'):
-                        self.pattern_entry.delete(0, 'end')
-                        self.pattern_entry.insert(0, data["custom_pattern"])
                 if "ep_template" in data:
                     if hasattr(self, 'ep_template_entry'):
                         self.ep_template_entry.delete(0, 'end')
                         self.ep_template_entry.insert(0, data["ep_template"])
+                if "ep_regex" in data:
+                    if hasattr(self, 'ep_regex_entry'):
+                        self.ep_regex_entry.delete(0, 'end')
+                        self.ep_regex_entry.insert(0, data["ep_regex"])
+                elif "custom_pattern" in data:
+                    if hasattr(self, 'ep_regex_entry'):
+                        self.ep_regex_entry.delete(0, 'end')
+                        self.ep_regex_entry.insert(0, data["custom_pattern"])
+                if "ep_pattern_mode" in data:
+                    if hasattr(self, 'ep_pattern_mode'):
+                        self.set_ep_pattern_mode(data["ep_pattern_mode"])
                 if "theme_mode" in data:
                     self.theme_mode = data["theme_mode"]
                     ctk.set_appearance_mode(self.theme_mode)
@@ -441,8 +503,9 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                 "playres_x": self.res_x_entry.get().strip() or "1920",
                 "playres_y": self.res_y_entry.get().strip() or "1080",
                 "theme_mode": self.theme_mode,
-                "custom_pattern": self.pattern_entry.get().strip() if hasattr(self, 'pattern_entry') else "",
                 "ep_template": self.ep_template_entry.get().strip() if hasattr(self, 'ep_template_entry') else "",
+                "ep_regex": self.ep_regex_entry.get().strip() if hasattr(self, 'ep_regex_entry') else "",
+                "ep_pattern_mode": self.ep_pattern_mode.get() if hasattr(self, 'ep_pattern_mode') else "template",
             }
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
@@ -701,22 +764,26 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         # Pre-clean: strip standalone years (18xx, 19xx, 20xx) that are NOT episode numbers
         name = re.sub(r'(?i)(?<!\be)(?<!\bep)(?<!\bepisode)(?<!\be )(?<!\bep )(?<!\bepisode )\b(?:18|19|20)\d{2}\b', '', name)
 
-        # Priority 0: user-defined template pattern
-        if hasattr(self, 'ep_template_entry'):
-            template = self.ep_template_entry.get().strip()
-            if template and '{ep_number}' in template:
-                result = self.apply_template_pattern(template, name)
-                if result:
-                    return result
-
-        if hasattr(self, 'pattern_entry'):
-            custom = self.pattern_entry.get().strip()
-            if custom:
-                try:
-                    matches = list(re.finditer(custom, name, re.IGNORECASE))
-                    valid = [m for m in matches if m.lastindex and m.lastindex >= 1]
-                    if valid: return str(int(valid[-1].group(1)))
-                except re.error: pass
+        # Priority 0: Mode-dependent custom detection
+        if hasattr(self, 'ep_pattern_mode'):
+            mode = self.ep_pattern_mode.get()
+            if mode == "template":
+                if hasattr(self, 'ep_template_entry'):
+                    template = self.ep_template_entry.get().strip()
+                    if template and '{ep_number}' in template:
+                        result = self.apply_template_pattern(template, name)
+                        if result:
+                            return result
+            elif mode == "regex":
+                if hasattr(self, 'ep_regex_entry'):
+                    custom = self.ep_regex_entry.get().strip()
+                    if custom:
+                        try:
+                            m = re.search(custom, name, re.IGNORECASE)
+                            if m and m.lastindex and m.lastindex >= 1:
+                                return str(int(m.group(1)))
+                        except re.error:
+                            pass
 
         # Priority 0.5: SxxExx format (e.g. S02E05) — extract the E-number, ignore the season number
         match = re.search(r'\bS\d{1,2}E0*(\d{1,4})\b', name, re.IGNORECASE)
