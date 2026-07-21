@@ -204,7 +204,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
         ctk.CTkLabel(
             self.template_input_frame,
-            text="Use {ep_number} as placeholder. If the pattern appears multiple times, the LAST match is used.",
+            text="Use {ep_number} for the episode number. You can also use {season}, {title}, {group}, {ignore}, or {*} for dynamic parts.",
             font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e"
         ).pack(anchor="w", pady=(2, 0))
 
@@ -747,14 +747,32 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
     def apply_template_pattern(self, template, name):
         if '{ep_number}' not in template:
             return None
-        parts = template.split('{ep_number}')
-        if len(parts) != 2:
-            return None  # only one {ep_number} placeholder allowed
-        prefix_literal, suffix_literal = parts
-        pattern = re.escape(prefix_literal) + r'0*(\d{1,4})' + re.escape(suffix_literal)
-        matches = re.findall(pattern, name, re.IGNORECASE)
-        if matches:
-            return str(int(matches[-1]))  # always prefer the LAST match
+        tokens = re.split(r'(\{.*?\})', template)
+        pattern_parts = []
+        ep_group_index = 1
+        current_group = 1
+        for token in tokens:
+            if not token:
+                continue
+            if token == '{ep_number}':
+                pattern_parts.append(r'0*(\d{1,4})')
+                ep_group_index = current_group
+                current_group += 1
+            elif token.startswith('{') and token.endswith('}'):
+                # Treat any other placeholder (e.g. {season}, {title}, {ignore}, {group}, {quality}, {*}) as a wildcard
+                pattern_parts.append(r'.*?')
+            else:
+                pattern_parts.append(re.escape(token))
+        
+        pattern = "".join(pattern_parts)
+        try:
+            matches = list(re.finditer(pattern, name, re.IGNORECASE))
+            if matches:
+                valid = [m for m in matches if len(m.groups()) >= ep_group_index and m.group(ep_group_index)]
+                if valid:
+                    return str(int(valid[-1].group(ep_group_index)))
+        except re.error:
+            pass
         return None
 
     def extract_episode_number(self, filename):
