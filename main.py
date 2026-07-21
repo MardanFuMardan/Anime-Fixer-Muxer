@@ -153,27 +153,68 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         self.res_y_entry.insert(0, "1080")
         self.res_y_entry.grid(row=0, column=4, padx=(0, 15))
 
-        # --- EPISODE DETECTION CARD ---
+        # --- TEACH EPISODE DETECTION CARD ---
         ep_detection_frame = ctk.CTkFrame(main_frame, fg_color="#080810", corner_radius=8, border_width=1, border_color="#131320")
         ep_detection_frame.pack(fill="x", ipadx=15, ipady=10, pady=(0, 10))
 
-        ctk.CTkLabel(
-            ep_detection_frame, text="⟨ EPISODE PATTERN ⟩", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff"
-        ).pack(anchor="w", pady=(0, 8))
+        ep_header = ctk.CTkFrame(ep_detection_frame, fg_color="transparent")
+        ep_header.pack(fill="x", pady=(0, 4))
 
-        self.ep_pattern_entry = ctk.CTkEntry(
-            ep_detection_frame, width=500, justify="left",
-            font=ctk.CTkFont(family="Consolas", size=11), fg_color="#06060a",
-            border_color="#00d4ff", border_width=1, text_color="#e0e0e0",
-            corner_radius=4, placeholder_text="e.g. E{ep_number}  or  - {ep_number}  or  _-_{ep_number}"
-        )
-        self.ep_pattern_entry.pack(anchor="w")
+        ctk.CTkLabel(
+            ep_header, text="⟨ TEACH EPISODE DETECTION ⟩", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff"
+        ).pack(side="left")
 
         ctk.CTkLabel(
             ep_detection_frame,
-            text="Type {ep_number} where the episode number appears. Everything else is matched literally. If it repeats, the LAST occurrence is used.",
-            font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e"
-        ).pack(anchor="w", pady=(2, 0))
+            text="Paste a real filename from your folder, then tell us the correct episode number. We'll learn the pattern automatically.",
+            font=ctk.CTkFont(family="Consolas", size=9), text_color="#6a6a80"
+        ).pack(anchor="w", pady=(0, 8))
+
+        input_row = ctk.CTkFrame(ep_detection_frame, fg_color="transparent")
+        input_row.pack(fill="x", pady=(0, 6))
+
+        self.sample_filename_entry = ctk.CTkEntry(
+            input_row, width=420, justify="left",
+            font=ctk.CTkFont(family="Consolas", size=11), fg_color="#06060a",
+            border_color="#00d4ff", border_width=1, text_color="#e0e0e0",
+            corner_radius=4, placeholder_text="Paste a sample filename, e.g. Mahouka.Koukou.S02E05.1080p.mkv"
+        )
+        self.sample_filename_entry.pack(side="left", padx=(0, 8))
+
+        self.sample_ep_number_entry = ctk.CTkEntry(
+            input_row, width=80, justify="center",
+            font=ctk.CTkFont(family="Consolas", size=11, weight="bold"), fg_color="#06060a",
+            border_color="#00d4ff", border_width=1, text_color="#e0e0e0",
+            corner_radius=4, placeholder_text="e.g. 5"
+        )
+        self.sample_ep_number_entry.pack(side="left", padx=(0, 8))
+
+        self.learn_pattern_btn = ctk.CTkButton(
+            input_row, text="◈ LEARN PATTERN", height=28,
+            font=ctk.CTkFont(family="Consolas", size=11, weight="bold"),
+            fg_color="transparent", hover_color="#0a1a20", text_color="#00d4ff",
+            border_width=1, border_color="#00d4ff", corner_radius=4,
+            command=self.learn_episode_pattern
+        )
+        self.learn_pattern_btn.pack(side="left")
+
+        status_row = ctk.CTkFrame(ep_detection_frame, fg_color="transparent")
+        status_row.pack(fill="x")
+
+        self.learned_pattern_label = ctk.CTkLabel(
+            status_row, text="No pattern learned — using default detection.",
+            font=ctk.CTkFont(family="Consolas", size=9), text_color="#3a3a4e"
+        )
+        self.learned_pattern_label.pack(side="left", padx=(0, 10))
+
+        self.reset_pattern_btn = ctk.CTkButton(
+            status_row, text="✕ Reset", height=20, width=55,
+            font=ctk.CTkFont(family="Consolas", size=9),
+            fg_color="transparent", hover_color="#1a1a2e", text_color="#8080a0",
+            border_width=1, border_color="#2a2a3e", corner_radius=3,
+            command=self.reset_learned_pattern
+        )
+        self.reset_pattern_btn.pack(side="left")
 
 
         # --- TABS CONTAINER ---
@@ -408,14 +449,14 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                 if "playres_y" in data:
                     self.res_y_entry.delete(0, 'end')
                     self.res_y_entry.insert(0, str(data["playres_y"]))
-                if "ep_pattern" in data:
-                    if hasattr(self, 'ep_pattern_entry'):
-                        self.ep_pattern_entry.delete(0, 'end')
-                        self.ep_pattern_entry.insert(0, data["ep_pattern"])
-                elif "ep_template" in data:
-                    if hasattr(self, 'ep_pattern_entry'):
-                        self.ep_pattern_entry.delete(0, 'end')
-                        self.ep_pattern_entry.insert(0, data["ep_template"])
+                if data.get("learned_ep_prefix"):
+                    self.learned_ep_prefix = data["learned_ep_prefix"]
+                    self.learned_ep_pattern = re.escape(self.learned_ep_prefix) + r'0*(\d{1,4})'
+                    if hasattr(self, 'learned_pattern_label'):
+                        self.learned_pattern_label.configure(
+                            text=f"✔ Restored learned pattern: text before number is '{self.learned_ep_prefix}'",
+                            text_color="#00a050"
+                        )
                 if "theme_mode" in data:
                     self.theme_mode = data["theme_mode"]
                     ctk.set_appearance_mode(self.theme_mode)
@@ -432,7 +473,7 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                 "playres_x": self.res_x_entry.get().strip() or "1920",
                 "playres_y": self.res_y_entry.get().strip() or "1080",
                 "theme_mode": self.theme_mode,
-                "ep_pattern": self.ep_pattern_entry.get().strip() if hasattr(self, 'ep_pattern_entry') else "",
+                "learned_ep_prefix": getattr(self, 'learned_ep_prefix', "") or "",
             }
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
@@ -671,18 +712,82 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
     # =======================================================
     # CORE LOGIC (REGEX & PARSING)
     # =======================================================
-    def apply_template_pattern(self, template, name):
-        if '{ep_number}' not in template:
+    def learn_episode_pattern(self):
+        sample = self.sample_filename_entry.get().strip()
+        ep_str = self.sample_ep_number_entry.get().strip()
+
+        if not sample or not ep_str:
+            self.learned_pattern_label.configure(
+                text="✘ Enter both a filename and the correct episode number.",
+                text_color="#c0092e"
+            )
+            return
+
+        if not ep_str.isdigit():
+            self.learned_pattern_label.configure(
+                text="✘ Episode number must be numeric.",
+                text_color="#c0092e"
+            )
+            return
+
+        target_num = str(int(ep_str))  # normalize, strip leading zeros
+
+        candidates = []
+        for match in re.finditer(r'\d+', sample):
+            num_str = match.group()
+            if str(int(num_str)) == target_num:
+                candidates.append(match)
+
+        if not candidates:
+            self.learned_pattern_label.configure(
+                text=f"✘ Could not find '{ep_str}' anywhere in that filename.",
+                text_color="#c0092e"
+            )
+            return
+
+        chosen = candidates[-1]
+        start, end = chosen.span()
+
+        prefix_start = start
+        chars_back = 0
+        while prefix_start > 0 and chars_back < 6:
+            if sample[prefix_start - 1].isdigit():
+                break
+            prefix_start -= 1
+            chars_back += 1
+        prefix_literal = sample[prefix_start:start]
+
+        self.learned_ep_prefix = prefix_literal
+        self.learned_ep_pattern = re.escape(prefix_literal) + r'0*(\d{1,4})'
+
+        display_prefix = prefix_literal if prefix_literal.strip() else "(number at start)"
+        self.learned_pattern_label.configure(
+            text=f"✔ Learned pattern: text before number is '{display_prefix}' — will match similarly named files.",
+            text_color="#00a050"
+        )
+
+        test_result = self.apply_learned_pattern(sample)
+        if test_result != target_num:
+            self.learned_pattern_label.configure(
+                text=f"⚠ Learned pattern found '{test_result}' instead of '{target_num}' — try a different sample or check for repeated numbers.",
+                text_color="#c08000"
+            )
+
+    def apply_learned_pattern(self, name):
+        if not hasattr(self, 'learned_ep_pattern') or not self.learned_ep_pattern:
             return None
-        parts = template.split('{ep_number}')
-        if len(parts) != 2:
-            return None
-        prefix_literal, suffix_literal = parts
-        pattern = re.escape(prefix_literal) + r'0*(\d{1,4})' + re.escape(suffix_literal)
-        matches = re.findall(pattern, name, re.IGNORECASE)
+        matches = re.findall(self.learned_ep_pattern, name, re.IGNORECASE)
         if matches:
             return str(int(matches[-1]))
         return None
+
+    def reset_learned_pattern(self):
+        self.learned_ep_pattern = None
+        self.learned_ep_prefix = None
+        self.learned_pattern_label.configure(
+            text="No pattern learned — using default detection.",
+            text_color="#3a3a4e"
+        )
 
     def extract_episode_number(self, filename):
         name = os.path.splitext(filename)[0]
@@ -691,13 +796,11 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         # Pre-clean: strip standalone years (18xx, 19xx, 20xx) that are NOT episode numbers
         name = re.sub(r'(?i)(?<!\be)(?<!\bep)(?<!\bepisode)(?<!\be )(?<!\bep )(?<!\bepisode )\b(?:18|19|20)\d{2}\b', '', name)
 
-        # Priority 0: user-defined pattern
-        if hasattr(self, 'ep_pattern_entry'):
-            pattern = self.ep_pattern_entry.get().strip()
-            if pattern and '{ep_number}' in pattern:
-                result = self.apply_template_pattern(pattern, name)
-                if result:
-                    return result
+        # Priority 0: user-taught pattern (learned from example)
+        if hasattr(self, 'learned_ep_pattern') and self.learned_ep_pattern:
+            result = self.apply_learned_pattern(name)
+            if result:
+                return result
 
         # Priority 0.5: SxxExx format (e.g. S02E05) — extract the E-number, ignore the season number
         match = re.search(r'\bS\d{1,2}E0*(\d{1,4})\b', name, re.IGNORECASE)
