@@ -889,6 +889,9 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         except Exception as e: self.log(f"Integrity check failed for Ep {vid_ep}: {e}", "WARNING")
 
     def smart_truncate(self, text, max_len=45):
+        if not text:
+            return ""
+        text = str(text)
         if len(text) <= max_len:
             return text
         keep = max_len - 3
@@ -902,53 +905,77 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             self.log("Queue is empty — add folders first.", "WARNING")
             return
 
-        preview = ctk.CTkToplevel(self)
-        preview.title("Preview — Video ↔ Subtitle Matches")
-        preview.geometry("1100x560")
-        preview.configure(fg_color="#050508")
-        preview.transient(self)
+        try:
+            preview = ctk.CTkToplevel(self)
+            preview.title("Preview — Video ↔ Subtitle Matches")
+            preview.geometry("1100x560")
+            preview.configure(fg_color="#050508")
+            preview.transient(self)
 
-        ctk.CTkLabel(preview, text="⟨ DRY-RUN PREVIEW — VIDEO ↔ SUBTITLE MATCH TABLE ⟩", font=ctk.CTkFont(family="Consolas", size=11, weight="bold"), text_color="#00d4ff").pack(anchor="w", padx=20, pady=(15, 5))
-        ctk.CTkLabel(preview, text="No files are processed. This only shows how episodes will be paired.", font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e").pack(anchor="w", padx=20, pady=(0, 10))
+            ctk.CTkLabel(preview, text="⟨ DRY-RUN PREVIEW — VIDEO ↔ SUBTITLE MATCH TABLE ⟩", font=ctk.CTkFont(family="Consolas", size=11, weight="bold"), text_color="#00d4ff").pack(anchor="w", padx=20, pady=(15, 5))
+            ctk.CTkLabel(preview, text="No files are processed. This only shows how episodes will be paired.", font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e").pack(anchor="w", padx=20, pady=(0, 10))
 
-        scroll = ctk.CTkScrollableFrame(preview, fg_color="#03030a", border_color="#131320", border_width=1, orientation="both")
-        scroll.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+            scroll = ctk.CTkScrollableFrame(preview, fg_color="#03030a", border_color="#131320", border_width=1, orientation="both")
+            scroll.pack(fill="both", expand=True, padx=20, pady=(0, 10))
 
-        header_row = ctk.CTkFrame(scroll, fg_color="#0a0a18", corner_radius=0)
-        header_row.pack(fill="x", pady=(0, 2))
-        for col_text, col_width in [("#", 40), ("FOLDER", 160), ("EP", 40), ("VIDEO FILE", 320), ("SUBTITLE FILE", 320), ("STATUS", 100)]:
-            ctk.CTkLabel(header_row, text=col_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff", anchor="w").pack(side="left", padx=4, pady=4)
+            header_row = ctk.CTkFrame(scroll, fg_color="#0a0a18", corner_radius=0)
+            header_row.pack(fill="x", pady=(0, 2))
+            for col_text, col_width in [("#", 40), ("FOLDER", 160), ("EP", 40), ("VIDEO FILE", 320), ("SUBTITLE FILE", 320), ("STATUS", 100)]:
+                ctk.CTkLabel(header_row, text=col_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff", anchor="w").pack(side="left", padx=4, pady=4)
 
-        row_num = 0
-        for folder in self.folder_queue:
-            subs_folder = os.path.join(folder, "subs")
-            if not os.path.exists(subs_folder): continue
-            video_files = sorted([f for f in os.listdir(folder) if f.endswith(('.mkv', '.mp4'))], key=lambda f: (self.extract_episode_number(f) or ""))
-            sub_files = [f for f in os.listdir(subs_folder) if f.endswith('.ass')]
-            folder_name = os.path.basename(folder)
+            row_num = 0
+            for folder in self.folder_queue:
+                subs_folder = os.path.join(folder, "subs")
+                subs_exists = os.path.exists(subs_folder)
+                self.log(f"[DEBUG] Preview: checking folder {folder}, subs exists: {subs_exists}", "DEBUG")
+                if not subs_exists:
+                    continue
 
-            for video in video_files:
-                row_num += 1
-                vid_ep = self.extract_episode_number(video)
-                matched_sub = self.find_matching_sub(vid_ep, sub_files) if vid_ep else None
-                status = "✔ MATCHED" if matched_sub else "✘ NO SUB"
-                status_color = "#00a050" if matched_sub else "#c0092e"
-                row_bg = "#080810" if row_num % 2 == 0 else "#050508"
+                try:
+                    video_files = sorted([f for f in os.listdir(folder) if f.endswith(('.mkv', '.mp4'))], key=lambda f: (self.extract_episode_number(f) or ""))
+                except Exception as e:
+                    self.log(f"[ERROR] Failed reading video files for folder {folder}: {e}", "ERROR")
+                    video_files = []
 
-                data_row = ctk.CTkFrame(scroll, fg_color=row_bg, corner_radius=0)
-                data_row.pack(fill="x", pady=1)
+                try:
+                    sub_files = [f for f in os.listdir(subs_folder) if f.endswith('.ass')]
+                except Exception as e:
+                    self.log(f"[ERROR] Failed reading sub files for {subs_folder}: {e}", "ERROR")
+                    sub_files = []
 
-                for cell_text, col_width, color in [
-                    (str(row_num), 40, "#3a3a5e"), 
-                    (self.smart_truncate(folder_name, 25), 160, "#8080a0"), 
-                    (str(vid_ep or "—"), 40, "#00d4ff"),
-                    (self.smart_truncate(video, 45), 320, "#c0c0d0"), 
-                    (self.smart_truncate(matched_sub or "—", 45), 320, "#8080a0"), 
-                    (status, 100, status_color)
-                ]:
-                    ctk.CTkLabel(data_row, text=cell_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10), text_color=color, anchor="w").pack(side="left", padx=4, pady=3)
+                folder_name = os.path.basename(folder)
+                self.log(f"[DEBUG] Preview: folder={folder_name}, videos found={len(video_files)}, subs found={len(sub_files)}", "DEBUG")
 
-        ctk.CTkButton(preview, text="[ CLOSE ]", height=32, corner_radius=4, font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#0a0a14", text_color="#c0092e", border_width=1, border_color="#2a0810", command=preview.destroy).pack(pady=(0, 15))
+                for video in video_files:
+                    try:
+                        row_num += 1
+                        vid_ep = self.extract_episode_number(video)
+                        matched_sub = self.find_matching_sub(vid_ep, sub_files) if vid_ep else None
+                        status = "✔ MATCHED" if matched_sub else "✘ NO SUB"
+                        status_color = "#00a050" if matched_sub else "#c0092e"
+                        row_bg = "#080810" if row_num % 2 == 0 else "#050508"
+
+                        data_row = ctk.CTkFrame(scroll, fg_color=row_bg, corner_radius=0)
+                        data_row.pack(fill="x", pady=1)
+
+                        for cell_text, col_width, color in [
+                            (str(row_num), 40, "#3a3a5e"), 
+                            (self.smart_truncate(folder_name, 25), 160, "#8080a0"), 
+                            (str(vid_ep or "—"), 40, "#00d4ff"),
+                            (self.smart_truncate(video, 45), 320, "#c0c0d0"), 
+                            (self.smart_truncate(matched_sub or "—", 45), 320, "#8080a0"), 
+                            (status, 100, status_color)
+                        ]:
+                            ctk.CTkLabel(data_row, text=cell_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10), text_color=color, anchor="w").pack(side="left", padx=4, pady=3)
+                    except Exception as e:
+                        self.log(f"[ERROR] Preview row failed for video '{video}': {e}", "ERROR")
+                        continue
+
+            ctk.CTkButton(preview, text="[ CLOSE ]", height=32, corner_radius=4, font=ctk.CTkFont(family="Consolas", size=12), fg_color="transparent", hover_color="#0a0a14", text_color="#c0092e", border_width=1, border_color="#2a0810", command=preview.destroy).pack(pady=(0, 15))
+        except Exception as e:
+            self.log(f"[ERROR] Preview window failed to render: {e}", "ERROR")
+            import traceback
+            self.log(f"[ERROR] Traceback: {traceback.format_exc()}", "ERROR")
 
 
     # =======================================================
