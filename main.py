@@ -718,6 +718,10 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                     if valid: return str(int(valid[-1].group(1)))
                 except re.error: pass
 
+        # Priority 0.5: SxxExx format (e.g. S02E05) — extract the E-number, ignore the season number
+        match = re.search(r'\bS\d{1,2}E0*(\d{1,4})\b', name, re.IGNORECASE)
+        if match: return str(int(match.group(1)))
+
         # Priority 1: Explicit episode markers
         match = re.search(r'\b(?:E|EP|Episode)\s*0*(\d{1,4})\b', name, re.IGNORECASE)
         if match: return str(int(match.group(1)))
@@ -884,6 +888,14 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             else: self.log(f"Integrity OK Ep {vid_ep}: All streams verified.", "INFO")
         except Exception as e: self.log(f"Integrity check failed for Ep {vid_ep}: {e}", "WARNING")
 
+    def smart_truncate(self, text, max_len=45):
+        if len(text) <= max_len:
+            return text
+        keep = max_len - 3
+        head = keep // 2 + keep % 2
+        tail = keep // 2
+        return f"{text[:head]}...{text[-tail:]}"
+
     def show_preview_window(self):
         if self.is_processing: return
         if not self.folder_queue:
@@ -899,16 +911,13 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
         ctk.CTkLabel(preview, text="⟨ DRY-RUN PREVIEW — VIDEO ↔ SUBTITLE MATCH TABLE ⟩", font=ctk.CTkFont(family="Consolas", size=11, weight="bold"), text_color="#00d4ff").pack(anchor="w", padx=20, pady=(15, 5))
         ctk.CTkLabel(preview, text="No files are processed. This only shows how episodes will be paired.", font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e").pack(anchor="w", padx=20, pady=(0, 10))
 
-        scroll = ctk.CTkScrollableFrame(preview, fg_color="#03030a", border_color="#131320", border_width=1)
+        scroll = ctk.CTkScrollableFrame(preview, fg_color="#03030a", border_color="#131320", border_width=1, orientation="both")
         scroll.pack(fill="both", expand=True, padx=20, pady=(0, 10))
 
         header_row = ctk.CTkFrame(scroll, fg_color="#0a0a18", corner_radius=0)
         header_row.pack(fill="x", pady=(0, 2))
         for col_text, col_width in [("#", 40), ("FOLDER", 160), ("EP", 40), ("VIDEO FILE", 320), ("SUBTITLE FILE", 320), ("STATUS", 100)]:
             ctk.CTkLabel(header_row, text=col_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff", anchor="w").pack(side="left", padx=4, pady=4)
-
-        def trunc(s, max_len=40):
-            return s if len(s) <= max_len else s[:max_len-15] + "..." + s[-12:]
 
         row_num = 0
         for folder in self.folder_queue:
@@ -931,10 +940,10 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
 
                 for cell_text, col_width, color in [
                     (str(row_num), 40, "#3a3a5e"), 
-                    (trunc(folder_name, 20), 160, "#8080a0"), 
+                    (self.smart_truncate(folder_name, 25), 160, "#8080a0"), 
                     (str(vid_ep or "—"), 40, "#00d4ff"),
-                    (trunc(video, 45), 320, "#c0c0d0"), 
-                    (trunc(matched_sub or "—", 45), 320, "#8080a0"), 
+                    (self.smart_truncate(video, 45), 320, "#c0c0d0"), 
+                    (self.smart_truncate(matched_sub or "—", 45), 320, "#8080a0"), 
                     (status, 100, status_color)
                 ]:
                     ctk.CTkLabel(data_row, text=cell_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10), text_color=color, anchor="w").pack(side="left", padx=4, pady=3)
