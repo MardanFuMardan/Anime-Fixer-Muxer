@@ -997,9 +997,9 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             preview.transient(self)
 
             ctk.CTkLabel(preview, text="⟨ DRY-RUN PREVIEW — VIDEO ↔ SUBTITLE MATCH TABLE ⟩", font=ctk.CTkFont(family="Consolas", size=11, weight="bold"), text_color="#00d4ff").pack(anchor="w", padx=20, pady=(15, 5))
-            ctk.CTkLabel(preview, text="No files are processed. This only shows how episodes will be paired.", font=ctk.CTkFont(family="Consolas", size=9), text_color="#2a2a3e").pack(anchor="w", padx=20, pady=(0, 10))
+            ctk.CTkLabel(preview, text="No files are processed. This only shows how episodes will be paired.", font=ctk.CTkFont(family="Consolas", size=9), text_color="#8080a0").pack(anchor="w", padx=20, pady=(0, 10))
 
-            scroll = ctk.CTkScrollableFrame(preview, fg_color="#03030a", border_color="#131320", border_width=1, orientation="both")
+            scroll = ctk.CTkScrollableFrame(preview, fg_color="#03030a", border_color="#131320", border_width=1)
             scroll.pack(fill="both", expand=True, padx=20, pady=(0, 10))
 
             header_row = ctk.CTkFrame(scroll, fg_color="#0a0a18", corner_radius=0)
