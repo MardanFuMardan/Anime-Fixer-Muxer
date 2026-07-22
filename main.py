@@ -997,15 +997,15 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
             preview.transient(self)
 
             ctk.CTkLabel(preview, text="⟨ DRY-RUN PREVIEW — VIDEO ↔ SUBTITLE MATCH TABLE ⟩", font=ctk.CTkFont(family="Consolas", size=11, weight="bold"), text_color="#00d4ff").pack(anchor="w", padx=20, pady=(15, 5))
-            ctk.CTkLabel(preview, text="No files are processed. This only shows how episodes will be paired.", font=ctk.CTkFont(family="Consolas", size=9), text_color="#8080a0").pack(anchor="w", padx=20, pady=(0, 10))
+            ctk.CTkLabel(preview, text="No files are processed. Click '+' or any row to expand full un-truncated filenames.", font=ctk.CTkFont(family="Consolas", size=9), text_color="#8080a0").pack(anchor="w", padx=20, pady=(0, 10))
 
             scroll = ctk.CTkScrollableFrame(preview, fg_color="#03030a", border_color="#131320", border_width=1)
             scroll.pack(fill="both", expand=True, padx=20, pady=(0, 10))
 
             header_row = ctk.CTkFrame(scroll, fg_color="#0a0a18", corner_radius=0)
             header_row.pack(fill="x", pady=(0, 2))
-            for col_text, col_width in [("#", 40), ("FOLDER", 160), ("EP", 40), ("VIDEO FILE", 320), ("SUBTITLE FILE", 320), ("STATUS", 100)]:
-                ctk.CTkLabel(header_row, text=col_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff", anchor="w").pack(side="left", padx=4, pady=4)
+            for col_text, col_width in [("EXP", 30), ("#", 30), ("FOLDER", 150), ("EP", 40), ("VIDEO FILE", 310), ("SUBTITLE FILE", 310), ("STATUS", 90)]:
+                ctk.CTkLabel(header_row, text=col_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff", anchor="w").pack(side="left", padx=3, pady=4)
 
             rows_rendered = 0
             skipped_folders = []
@@ -1054,15 +1054,41 @@ class PhoenixSubsMuxerFixer(TkinterDnD.Tk):
                         data_row = ctk.CTkFrame(scroll, fg_color=row_bg, corner_radius=0)
                         data_row.pack(fill="x", pady=1)
 
+                        details_frame = ctk.CTkFrame(scroll, fg_color="#0d0d1a", border_color="#00d4ff", border_width=1, corner_radius=4)
+
+                        def _make_toggle(df=details_frame, r_frame=data_row):
+                            is_exp = [False]
+                            def toggle(event=None):
+                                if is_exp[0]:
+                                    df.pack_forget()
+                                    exp_btn.configure(text="+", fg_color="transparent", text_color="#8080a0")
+                                    is_exp[0] = False
+                                else:
+                                    df.pack(fill="x", padx=15, pady=(2, 6), after=r_frame)
+                                    exp_btn.configure(text="-", fg_color="#00d4ff", text_color="#050508")
+                                    is_exp[0] = True
+                            return toggle
+
+                        exp_btn = ctk.CTkButton(data_row, text="+", width=26, height=22, font=ctk.CTkFont(family="Consolas", size=11, weight="bold"), fg_color="transparent", text_color="#8080a0", hover_color="#1a1a2e", corner_radius=3)
+                        exp_btn.pack(side="left", padx=2, pady=3)
+
+                        toggle_fn = _make_toggle()
+                        exp_btn.configure(command=toggle_fn)
+
+                        ctk.CTkLabel(details_frame, text=f"FULL VIDEO:  {video}", font=ctk.CTkFont(family="Consolas", size=10, weight="bold"), text_color="#00d4ff", anchor="w", justify="left", wraplength=980).pack(anchor="w", padx=12, pady=(6, 2))
+                        ctk.CTkLabel(details_frame, text=f"FULL SUB:    {matched_sub or 'None'}", font=ctk.CTkFont(family="Consolas", size=10), text_color="#a0a0c0", anchor="w", justify="left", wraplength=980).pack(anchor="w", padx=12, pady=(0, 6))
+
                         for cell_text, col_width, color in [
-                            (str(rows_rendered), 40, "#3a3a5e"), 
-                            (self.smart_truncate(folder_name, 25), 160, "#8080a0"), 
+                            (str(rows_rendered), 30, "#6a6a80"), 
+                            (self.smart_truncate(folder_name, 22), 150, "#8080a0"), 
                             (str(vid_ep or "—"), 40, "#00d4ff"),
-                            (self.smart_truncate(video, 45), 320, "#c0c0d0"), 
-                            (self.smart_truncate(matched_sub or "—", 45), 320, "#8080a0"), 
-                            (status, 100, status_color)
+                            (self.smart_truncate(video, 45), 310, "#c0c0d0"), 
+                            (self.smart_truncate(matched_sub or "—", 45), 310, "#8080a0"), 
+                            (status, 90, status_color)
                         ]:
-                            ctk.CTkLabel(data_row, text=cell_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10), text_color=color, anchor="w").pack(side="left", padx=4, pady=3)
+                            lbl = ctk.CTkLabel(data_row, text=cell_text, width=col_width, font=ctk.CTkFont(family="Consolas", size=10), text_color=color, anchor="w")
+                            lbl.pack(side="left", padx=3, pady=3)
+                            lbl.bind("<Button-1>", lambda e, fn=toggle_fn: fn())
                     except Exception as e:
                         self.log(f"[ERROR] Preview row failed for video '{video}': {e}", "ERROR")
                         continue
